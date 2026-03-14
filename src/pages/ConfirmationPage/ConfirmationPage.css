@@ -1,0 +1,932 @@
+.confirmation-page {
+  padding: 40px 0;
+}
+
+.confirmation-page__error {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 60px 20px;
+  text-align: center;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.confirmation-page__error h2 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.confirmation-page__error p {
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.confirmation-page__error button {
+  padding: 12px 30px;
+  background: #ff6600;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.confirmation-page__error button:hover {
+  background: #ff5500;
+  transform: translateY(-2px);
+}
+
+.confirmation-page__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 40px;
+}
+
+/* Успешное подтверждение */
+.confirmation-success {
+  grid-column: 1 / -1;
+  background: white;
+  border-radius: 12px;
+  padding: 60px 40px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.confirmation-success__icon {
+  font-size: 80px;
+  color: #4CAF50;
+  animation: bounce 1s ease;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-20px);
+  }
+  60% {
+    transform: translateY(-10px);
+  }
+}
+
+.confirmation-success__title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.confirmation-success__message {
+  font-size: 18px;
+  color: #666;
+  max-width: 500px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.confirmation-success__loader {
+  width: 300px;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.confirmation-success__loader-bar {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #45a049);
+  border-radius: 3px;
+  animation: loader 2s linear;
+}
+
+@keyframes loader {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+/* Основной контент */
+.confirmation-page__main {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.confirmation-page__title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.confirmation-page__subtitle {
+  font-size: 18px;
+  color: #666;
+  margin: 0;
+}
+
+/* Номер заказа */
+.confirmation-order-number {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.confirmation-order-number__label {
+  font-size: 16px;
+  color: #666;
+}
+
+.confirmation-order-number__value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff6600;
+}
+
+/* Секции */
+.confirmation-section {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.confirmation-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.confirmation-section__title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.confirmation-section__edit {
+  padding: 8px 16px;
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.confirmation-section__edit:hover {
+  background: #e9ecef;
+  color: #333;
+  border-color: #ff6600;
+}
+
+/* Поездка */
+.confirmation-trip {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.confirmation-direction {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.confirmation-direction__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.confirmation-direction__content {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.confirmation-direction__date {
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  padding: 8px 15px;
+  background: white;
+  border-radius: 6px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.confirmation-direction__train {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.confirmation-direction__train-number {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.confirmation-direction__train-name {
+  font-size: 16px;
+  color: #666;
+}
+
+.confirmation-direction__route {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.confirmation-direction__stations {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.confirmation-direction__station {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirmation-direction__station-city {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.confirmation-direction__station-name {
+  font-size: 16px;
+  color: #666;
+}
+
+.confirmation-direction__station-time {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ff6600;
+  padding: 5px 10px;
+  background: white;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.confirmation-direction__arrow {
+  font-size: 24px;
+  color: #ff6600;
+  font-weight: bold;
+  text-align: center;
+}
+
+.confirmation-direction__duration {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  padding: 8px;
+  background: white;
+  border-radius: 6px;
+}
+
+/* Места */
+.confirmation-seats {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.confirmation-seats__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.confirmation-seats__content {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirmation-seats__wagon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.confirmation-seats__wagon strong {
+  font-size: 18px;
+  color: #ff6600;
+}
+
+.confirmation-seats__wagon-type {
+  font-size: 14px;
+  color: #666;
+}
+
+.confirmation-seats__numbers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirmation-seats__numbers strong {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Пассажиры */
+.confirmation-passengers {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.confirmation-passenger {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.confirmation-passenger__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.confirmation-passenger__number {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.confirmation-passenger__seat {
+  font-size: 14px;
+  color: #666;
+  padding: 4px 10px;
+  background: white;
+  border-radius: 4px;
+}
+
+.confirmation-passenger__details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirmation-passenger__personal {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.confirmation-passenger__name {
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+}
+
+.confirmation-passenger__info {
+  font-size: 14px;
+  color: #666;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.confirmation-passenger__mobility {
+  color: #ff6600;
+  font-weight: 500;
+}
+
+.confirmation-passenger__document {
+  font-size: 14px;
+  color: #333;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 4px;
+}
+
+/* Оплата */
+.confirmation-payment {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirmation-payment__method {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.confirmation-payment__method strong {
+  font-size: 18px;
+  color: #ff6600;
+}
+
+.confirmation-payment__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirmation-payment__status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.confirmation-payment__status-badge--pending {
+  background: #ffeb3b;
+  color: #333;
+}
+
+/* Итоговая стоимость */
+.confirmation-total {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.confirmation-total__label {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.confirmation-total__price {
+  font-size: 36px;
+  font-weight: bold;
+  color: #ff6600;
+}
+
+/* Кнопки */
+.confirmation-actions {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.confirmation-actions__confirm {
+  padding: 18px 40px;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.confirmation-actions__confirm:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+}
+
+.confirmation-actions__confirm:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.confirmation-actions__spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.confirmation-actions__cancel {
+  padding: 10px 20px;
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.confirmation-actions__cancel:hover:not(:disabled) {
+  background: #e9ecef;
+  color: #333;
+}
+
+.confirmation-actions__cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Боковая панель */
+.confirmation-page__sidebar {
+  position: sticky;
+  top: 100px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Контакты */
+.confirmation-contacts {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.confirmation-contacts__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.confirmation-contacts__content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.confirmation-contacts__email,
+.confirmation-contacts__phone {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.confirmation-contacts__label {
+  font-size: 12px;
+  color: #666;
+}
+
+.confirmation-contacts__value {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Информация */
+.confirmation-info {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.confirmation-info__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.confirmation-info__list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.confirmation-info__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.confirmation-info__icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.confirmation-info__text {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Поддержка */
+.confirmation-support {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.confirmation-support__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.confirmation-support__contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirmation-support__phone,
+.confirmation-support__email {
+  font-size: 16px;
+  color: #333;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.confirmation-support__phone:hover,
+.confirmation-support__email:hover {
+  color: #ff6600;
+  background: #fff8f0;
+}
+
+@media (max-width: 1200px) {
+  .confirmation-page__container {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .confirmation-page__sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .confirmation-page {
+    padding: 20px 0;
+  }
+
+  .confirmation-success {
+    padding: 40px 20px;
+  }
+
+  .confirmation-success__title {
+    font-size: 24px;
+  }
+
+  .confirmation-success__message {
+    font-size: 16px;
+  }
+
+  .confirmation-page__title {
+    font-size: 24px;
+  }
+
+  .confirmation-page__subtitle {
+    font-size: 16px;
+  }
+
+  .confirmation-section,
+  .confirmation-total,
+  .confirmation-actions,
+  .confirmation-contacts,
+  .confirmation-info,
+  .confirmation-support {
+    padding: 20px;
+  }
+
+  .confirmation-section__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .confirmation-section__edit {
+    align-self: flex-start;
+  }
+
+  .confirmation-direction__stations {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .confirmation-direction__arrow {
+    transform: rotate(90deg);
+  }
+
+  .confirmation-passenger__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .confirmation-total {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .confirmation-total__price {
+    font-size: 28px;
+  }
+
+  .confirmation-actions__confirm {
+    padding: 15px 20px;
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .confirmation-order-number {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .confirmation-seats__wagon,
+  .confirmation-seats__numbers,
+  .confirmation-payment__method,
+  .confirmation-payment__status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .confirmation-info__item {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+}
+
+.confirmation-page__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.confirmation-page__spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #FFA800;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+.confirmation-error {
+  background-color: #ffe6e6;
+  border: 1px solid #ff9999;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.confirmation-error__icon {
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+.confirmation-error__message {
+  flex: 1;
+  color: #d32f2f;
+}
+
+.confirmation-error__close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #999;
+}
+
+.confirmation-agreement {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.confirmation-agreement__checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.confirmation-agreement__checkmark {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  margin-right: 10px;
+  position: relative;
+}
+
+.confirmation-agreement__checkbox input {
+  display: none;
+}
+
+.confirmation-agreement__checkbox input:checked + .confirmation-agreement__checkmark {
+  background-color: #FFA800;
+  border-color: #FFA800;
+}
+
+.confirmation-agreement__checkbox input:checked + .confirmation-agreement__checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: bold;
+}
+
+.confirmation-agreement__text {
+  font-size: 14px;
+}
+
+.confirmation-agreement__text a {
+  color: #FFA800;
+  text-decoration: none;
+}
+
+.confirmation-agreement__text a:hover {
+  text-decoration: underline;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

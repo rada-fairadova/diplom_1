@@ -1,0 +1,132 @@
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-screen__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(5px);
+}
+
+.loading-screen__content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  background: white;
+  border-radius: 15px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  animation: loadingFadeIn 0.3s ease;
+}
+
+@keyframes loadingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loading-screen__logo {
+  margin-bottom: 20px;
+}
+
+.loading-screen__logo-text {
+  font-size: 36px;
+  font-weight: bold;
+  color: #ff6600;
+  letter-spacing: 2px;
+}
+
+.loading-screen__title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 30px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.loading-screen__progress {
+  height: 6px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.loading-screen__progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6600, #ff5500);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.loading-screen__progress-text {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.loading-screen__hint {
+  font-size: 14px;
+  color: #888;
+  font-style: italic;
+}
+
+.loading-screen__hint::after {
+  content: '...';
+  animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+  0%, 20% {
+    content: '.';
+  }
+  40% {
+    content: '..';
+  }
+  60%, 100% {
+    content: '...';
+  }
+}
+
+@media (max-width: 480px) {
+  .loading-screen__content {
+    padding: 30px 20px;
+  }
+
+  .loading-screen__logo-text {
+    font-size: 28px;
+  }
+
+  .loading-screen__title {
+    font-size: 20px;
+  }
+}

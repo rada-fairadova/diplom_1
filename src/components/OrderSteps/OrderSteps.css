@@ -1,0 +1,137 @@
+.order-steps {
+  margin: 40px 0;
+  position: relative;
+}
+
+.order-steps__container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.order-steps__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.order-steps__circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  border: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.order-steps__circle--active {
+  background: white;
+  border-color: #ff6600;
+  box-shadow: 0 0 0 5px rgba(255, 102, 0, 0.1);
+}
+
+.order-steps__circle--completed {
+  background: #ff6600;
+  border-color: #ff6600;
+}
+
+.order-steps__number {
+  font-size: 18px;
+  font-weight: 600;
+  color: #666;
+}
+
+.order-steps__circle--active .order-steps__number {
+  color: #ff6600;
+}
+
+.order-steps__check {
+  font-size: 24px;
+  color: white;
+  font-weight: bold;
+}
+
+.order-steps__label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.order-steps__circle--active + .order-steps__label {
+  color: #ff6600;
+  font-weight: 600;
+}
+
+.order-steps__circle--completed + .order-steps__label {
+  color: #333;
+}
+
+.order-steps__line {
+  flex: 1;
+  height: 3px;
+  background: #f0f0f0;
+  margin: 0 10px;
+  position: relative;
+  top: -25px;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.order-steps__line--completed {
+  background: #ff6600;
+}
+
+.order-steps__line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: #ff6600;
+  transition: width 0.3s ease;
+}
+
+.order-steps__line--completed::before {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .order-steps__container {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .order-steps__step {
+    width: 100%;
+    flex-direction: row;
+    gap: 15px;
+    justify-content: flex-start;
+  }
+
+  .order-steps__circle {
+    margin-bottom: 0;
+    width: 40px;
+    height: 40px;
+  }
+
+  .order-steps__label {
+    text-align: left;
+  }
+
+  .order-steps__line {
+    display: none;
+  }
+}
