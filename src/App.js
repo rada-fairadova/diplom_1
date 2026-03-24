@@ -12,7 +12,7 @@ import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
 import './App.css';
 
-function App() {
+ function App() {
   return (
     <TicketProvider>
       <Router>
@@ -20,13 +20,20 @@ function App() {
         <Header />
         <div className="App">
           <Routes>
+            {/* Главная страница */}
             <Route path="/" element={<MainPage />} />
-            <Route path="/" element={<SearchPage />} />
+            
+            {/* Страница поиска */}
             <Route path="/search" element={<SearchPage />} />
+            
+            {/* Остальные страницы */}
             <Route path="/seats" element={<SeatsSelectionPage />} />
             <Route path="/passengers" element={<PassengersPage />} />
             <Route path="/payment" element={<PaymentPage />} />
             <Route path="/confirmation" element={<OrderSuccessPage />} />
+            
+            {/* Перенаправление на 404, если страница не найдена */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           <Footer />
         </div>
