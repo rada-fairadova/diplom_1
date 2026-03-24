@@ -33,6 +33,7 @@ jobs:
       - name: Build
         run: CI=false npm run build
         env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           NODE_ENV: production
           PUBLIC_URL: /diplom_1 
       
