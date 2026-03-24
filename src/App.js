@@ -12,31 +12,35 @@ import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
 import './App.css';
 
+// Создаем Layout компонент для общих элементов
+function Layout() {
+  return (
+    <>
+      <LoadingScreen />
+      <Header />
+      <div className="App">
+        <Outlet /> {/* Здесь будут рендериться дочерние компоненты */}
+        <Footer />
+      </div>
+    </>
+  );
+}
+
 function App() {
   return (
     <TicketProvider>
       <Router>
-        <LoadingScreen />
-        <Header />
-        <div className="App">
-          <Routes>
-            {/* Перенаправляем с корня на страницу поиска */}
-            <Route path="/" element={<Navigate to="/search" replace />} />
-            
-            {/* Страница поиска (теперь главная) */}
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<MainPage />} />
             <Route path="/search" element={<SearchPage />} />
-            
-            {/* Остальные страницы */}
             <Route path="/seats" element={<SeatsSelectionPage />} />
             <Route path="/passengers" element={<PassengersPage />} />
             <Route path="/payment" element={<PaymentPage />} />
             <Route path="/confirmation" element={<OrderSuccessPage />} />
-            
-            {/* 404 */}
             <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-          <Footer />
-        </div>
+          </Route>
+        </Routes>
       </Router>
     </TicketProvider>
   );
