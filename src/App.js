@@ -12,7 +12,7 @@ import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
 import './App.css';
 
- function App() {
+function App() {
   return (
     <TicketProvider>
       <Router>
@@ -20,10 +20,10 @@ import './App.css';
         <Header />
         <div className="App">
           <Routes>
-            {/* Главная страница */}
-            <Route path="/" element={<MainPage />} />
+            {/* Перенаправляем с корня на страницу поиска */}
+            <Route path="/" element={<Navigate to="/search" replace />} />
             
-            {/* Страница поиска */}
+            {/* Страница поиска (теперь главная) */}
             <Route path="/search" element={<SearchPage />} />
             
             {/* Остальные страницы */}
@@ -32,7 +32,7 @@ import './App.css';
             <Route path="/payment" element={<PaymentPage />} />
             <Route path="/confirmation" element={<OrderSuccessPage />} />
             
-            {/* Перенаправление на 404, если страница не найдена */}
+            {/* 404 */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           <Footer />
