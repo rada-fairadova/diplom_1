@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTicket } from '../../context/TicketContext';
 import { trainApi } from '../../services/api';
@@ -41,6 +41,137 @@ function SearchPage() {
     hasLinens: false
   });
   const [sortBy, setSortBy] = useState('departureTime');
+
+  // Функция для получения минимальной цены поезда с учетом типа вагона
+  const getTrainMinPrice = useCallback((train, wagonTypeFilter) => {
+    if (!train.wagons || train.wagons.length === 0) {
+      return Infinity;
+    }
+    
+    let relevantWagons = train.wagons;
+    
+    if (wagonTypeFilter !== 'all') {
+      const selectedApiTypes = wagonTypes.find(t => t.id === wagonTypeFilter)?.apiTypes || [];
+      relevantWagons = train.wagons.filter(wagon => {
+        const wagonApiType = wagon.apiType || wagon.type;
+        return selectedApiTypes.includes(wagonApiType);
+      });
+    }
+    
+    if (!relevantWagons || relevantWagons.length === 0) {
+      return Infinity;
+    }
+    
+    const prices = relevantWagons
+      .map(wagon => wagon.price || wagon.minPrice || wagon.topPrice)
+      .filter(price => price && price > 0);
+    
+    return prices.length > 0 ? Math.min(...prices) : Infinity;
+  }, []);
+
+  // Функция для применения фильтров
+  const applyFilters = useCallback(() => {
+    let filtered = [...trains];
+    
+    console.log('Применяем фильтры:', filters);
+    console.log('Всего поездов:', trains.length);
+    
+    // Фильтр по типу вагона
+    if (filters.wagonType !== 'all') {
+      const selectedApiTypes = wagonTypes.find(t => t.id === filters.wagonType)?.apiTypes || [];
+      
+      filtered = filtered.filter(train => {
+        if (!train.wagons || train.wagons.length === 0) {
+          return false;
+        }
+        
+        const hasWagonType = train.wagons.some(wagon => {
+          const wagonApiType = wagon.apiType || wagon.type;
+          return selectedApiTypes.includes(wagonApiType);
+        });
+        
+        return hasWagonType;
+      });
+      
+      console.log(`После фильтра по типу вагона (${filters.wagonType}):`, filtered.length);
+    }
+
+    // Фильтр по ценовому диапазону
+    const priceRange = priceRanges.find(range => range.id === filters.priceRange);
+    if (priceRange && priceRange.id !== 'all') {
+      filtered = filtered.filter(train => {
+        const minPrice = getTrainMinPrice(train, filters.wagonType);
+        const inRange = minPrice >= priceRange.min && minPrice <= priceRange.max;
+        return inRange;
+      });
+      
+      console.log(`После фильтра по цене (${filters.priceRange}):`, filtered.length);
+    }
+
+    // Фильтр по времени отправления
+    if (filters.departureTime !== 'any') {
+      filtered = filtered.filter(train => {
+        try {
+          if (!train.departureTime) return false;
+          const departureTime = new Date(train.departureTime);
+          const hour = departureTime.getHours();
+          
+          let inRange = false;
+          if (filters.departureTime === 'morning') inRange = hour >= 5 && hour < 12;
+          if (filters.departureTime === 'day') inRange = hour >= 12 && hour < 18;
+          if (filters.departureTime === 'evening') inRange = hour >= 18 && hour < 23;
+          if (filters.departureTime === 'night') inRange = hour >= 23 || hour < 5;
+          
+          return inRange;
+        } catch {
+          return true;
+        }
+      });
+      
+      console.log(`После фильтра по времени (${filters.departureTime}):`, filtered.length);
+    }
+
+    // Фильтр по услугам
+    if (filters.hasWifi) {
+      filtered = filtered.filter(train => train.hasWifi === true);
+    }
+    if (filters.hasConditioner) {
+      filtered = filtered.filter(train => train.hasConditioner === true);
+    }
+    if (filters.hasLinens) {
+      filtered = filtered.filter(train => train.hasLinens === true);
+    }
+
+    // Сортировка
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'price-asc':
+          const priceA = getTrainMinPrice(a, filters.wagonType);
+          const priceB = getTrainMinPrice(b, filters.wagonType);
+          return priceA - priceB;
+        case 'price-desc':
+          const priceADesc = getTrainMinPrice(a, filters.wagonType);
+          const priceBDesc = getTrainMinPrice(b, filters.wagonType);
+          return priceBDesc - priceADesc;
+        case 'duration':
+          return (a.duration || 0) - (b.duration || 0);
+        case 'departureTime':
+        default:
+          try {
+            return new Date(a.departureTime || 0) - new Date(b.departureTime || 0);
+          } catch {
+            return 0;
+          }
+      }
+    });
+    
+    setFilteredTrains(filtered);
+  }, [trains, filters, sortBy, getTrainMinPrice]);
+
+  // Применяем фильтры при их изменении
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   useEffect(() => {
     const fetchTrains = async () => {
@@ -191,130 +322,8 @@ function SearchPage() {
     fetchTrains();
   }, [searchParams]);
 
-  useEffect(() => {
-    // Фильтрация поездов
-    let filtered = [...trains];
-    
-    // Фильтр по типу вагона
-    if (filters.wagonType !== 'all') {
-      const selectedApiTypes = wagonTypes.find(t => t.id === filters.wagonType)?.apiTypes || [];
-      
-      filtered = filtered.filter(train => {
-        if (!train.wagons || train.wagons.length === 0) {
-          return false;
-        }
-        
-        const hasWagonType = train.wagons.some(wagon => {
-          return selectedApiTypes.includes(wagon.apiType || wagon.type);
-        });
-        
-        return hasWagonType;
-      });
-    }
-
-    // Фильтр по ценовому диапазону
-    const priceRange = priceRanges.find(range => range.id === filters.priceRange);
-    if (priceRange && priceRange.id !== 'all') {
-      filtered = filtered.filter(train => {
-        const relevantWagons = filters.wagonType !== 'all' 
-          ? train.wagons.filter(wagon => {
-              const selectedApiTypes = wagonTypes.find(t => t.id === filters.wagonType)?.apiTypes || [];
-              return selectedApiTypes.includes(wagon.apiType || wagon.type);
-            })
-          : train.wagons;
-        
-        if (!relevantWagons || relevantWagons.length === 0) return false;
-        
-        const minPrice = Math.min(...relevantWagons.map(wagon => wagon.price || Infinity));
-        const inRange = minPrice >= priceRange.min && minPrice <= priceRange.max;
-        
-        return inRange;
-      });
-    }
-
-    // Фильтр по времени отправления
-    if (filters.departureTime !== 'any') {
-      filtered = filtered.filter(train => {
-        try {
-          if (!train.departureTime) return false;
-          const departureTime = new Date(train.departureTime);
-          const hour = departureTime.getHours();
-          
-          let inRange = false;
-          if (filters.departureTime === 'morning') inRange = hour >= 5 && hour < 12;
-          if (filters.departureTime === 'day') inRange = hour >= 12 && hour < 18;
-          if (filters.departureTime === 'evening') inRange = hour >= 18 && hour < 23;
-          if (filters.departureTime === 'night') inRange = hour >= 23 || hour < 5;
-          
-          return inRange;
-        } catch {
-          return true;
-        }
-      });
-    }
-
-    // Фильтр по услугам
-    if (filters.hasWifi) {
-      filtered = filtered.filter(train => train.hasWifi === true);
-    }
-    if (filters.hasConditioner) {
-      filtered = filtered.filter(train => train.hasConditioner === true);
-    }
-    if (filters.hasLinens) {
-      filtered = filtered.filter(train => train.hasLinens === true);
-    }
-
-    // Сортировка
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'price-asc':
-          const priceA = getTrainMinPrice(a, filters.wagonType);
-          const priceB = getTrainMinPrice(b, filters.wagonType);
-          return priceA - priceB;
-        case 'price-desc':
-          const priceADesc = getTrainMinPrice(a, filters.wagonType);
-          const priceBDesc = getTrainMinPrice(b, filters.wagonType);
-          return priceBDesc - priceADesc;
-        case 'duration':
-          return (a.duration || 0) - (b.duration || 0);
-        case 'departureTime':
-        default:
-          try {
-            return new Date(a.departureTime || 0) - new Date(b.departureTime || 0);
-          } catch {
-            return 0;
-          }
-      }
-    });
-    
-    setFilteredTrains(filtered);
-  }, [trains, filters, sortBy]);
-
-  // Функция для получения минимальной цены поезда с учетом типа вагона
-  const getTrainMinPrice = (train, wagonTypeFilter) => {
-    if (!train.wagons || train.wagons.length === 0) {
-      return Infinity;
-    }
-    
-    const relevantWagons = wagonTypeFilter !== 'all' 
-      ? train.wagons.filter(wagon => {
-          const selectedApiTypes = wagonTypes.find(t => t.id === wagonTypeFilter)?.apiTypes || [];
-          return selectedApiTypes.includes(wagon.apiType || wagon.type);
-        })
-      : train.wagons;
-    
-    if (!relevantWagons || relevantWagons.length === 0) {
-      return Infinity;
-    }
-    
-    const prices = relevantWagons
-      .map(wagon => wagon.price)
-      .filter(price => price && price > 0);
-    
-    return prices.length > 0 ? Math.min(...prices) : Infinity;
-  };
-
   const handleFilterChange = (filterName, value) => {
+    console.log(`Изменение фильтра ${filterName}:`, value);
     setFilters(prev => ({
       ...prev,
       [filterName]: value
@@ -338,7 +347,6 @@ function SearchPage() {
 
   const handleTrainSelect = async (train) => {
     try {
-      // Сохраняем выбранный поезд в контекст
       setSelectedTrain({
         ...train,
         originalData: train
@@ -351,9 +359,7 @@ function SearchPage() {
     }
   };
 
-  // Функция для обработки клика на последний билет
   const handleLastTicketClick = (ticketData) => {
-    // Конвертируем тип вагона API в наш тип
     let wagonType = 'coupe';
     let wagonName = 'Купе';
     
@@ -371,7 +377,6 @@ function SearchPage() {
       wagonName = 'Сидячий';
     }
     
-    // Создаем объект поезда из данных билета
     const trainFromTicket = {
       id: `${ticketData.trainNumber}-${Date.now()}`,
       number: ticketData.trainNumber,
@@ -410,7 +415,6 @@ function SearchPage() {
     navigate('/seats');
   };
 
-  // Функция для получения моковых данных
   const getMockTrains = () => {
     return [
       {
@@ -591,17 +595,18 @@ function SearchPage() {
     { value: 'duration', label: 'По времени в пути' }
   ];
 
-  // Форматирование цены
   const formatPrice = (price) => {
     return price.toLocaleString('ru-RU');
   };
+
+  // Получаем отображаемое название активного фильтра для отладки
+  const activeWagonTypeLabel = wagonTypes.find(t => t.id === filters.wagonType)?.label;
 
   return (
     <div className="search-page">
       <OrderSteps />
 
       <div className="search-page__container">
-        {/* Боковая панель с фильтрами */}
         <aside className="search-page__sidebar">
           <div className="filters">
             <h3 className="filters__title">Фильтры</h3>
@@ -613,6 +618,7 @@ function SearchPage() {
                 {wagonTypes.map(type => (
                   <button
                     key={type.id}
+                    type="button"
                     className={`filters__option-btn ${filters.wagonType === type.id ? 'active' : ''}`}
                     onClick={() => handleFilterChange('wagonType', type.id)}
                   >
@@ -630,6 +636,7 @@ function SearchPage() {
                 {priceRanges.map(range => (
                   <button
                     key={range.id}
+                    type="button"
                     className={`filters__option-btn ${filters.priceRange === range.id ? 'active' : ''}`}
                     onClick={() => handleFilterChange('priceRange', range.id)}
                   >
@@ -710,15 +717,12 @@ function SearchPage() {
             </button>
           </div>
 
-          {/* Последние билеты */}
           <div className="sidebar__last-tickets">
             <LastTickets onTicketClick={handleLastTicketClick} />
           </div>
         </aside>
 
-        {/* Основной контент */}
         <main className="search-page__main">
-          {/* Заголовок с результатами */}
           <div className="search-results__header">
             <div className="search-results__title-wrapper">
               <h2 className="search-results__title">
@@ -729,6 +733,13 @@ function SearchPage() {
                   </span>
                 )}
               </h2>
+              
+              {/* Отладка - показываем активный фильтр */}
+              {filters.wagonType !== 'all' && (
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                  Активный фильтр: {activeWagonTypeLabel}
+                </div>
+              )}
               
               {filteredTrains.length > 0 && (
                 <div className="search-results__stats">
@@ -760,7 +771,6 @@ function SearchPage() {
               )}
             </div>
 
-            {/* Сортировка */}
             <div className="search-results__sort">
               <select 
                 className="search-results__sort-select"
@@ -776,7 +786,6 @@ function SearchPage() {
             </div>
           </div>
 
-          {/* Сообщение об ошибке */}
           {error && !loading && trains.length === 0 && (
             <div className="search-results__error">
               <div className="search-results__error-icon">⚠️</div>
@@ -784,7 +793,6 @@ function SearchPage() {
             </div>
           )}
 
-          {/* Статистика фильтров */}
           {(filters.wagonType !== 'all' || filters.priceRange !== 'all' || filters.departureTime !== 'any' || filters.hasWifi || filters.hasConditioner || filters.hasLinens) && (
             <div className="filters-summary">
               <div className="filters-summary__title">Примененные фильтры:</div>
@@ -859,7 +867,6 @@ function SearchPage() {
             </div>
           )}
 
-          {/* Результаты поиска */}
           <div className="search-results">
             {loading ? (
               <div className="search-results__loading">
@@ -872,7 +879,6 @@ function SearchPage() {
                   key={train.id}
                   train={train}
                   onSelect={handleTrainSelect}
-                  filteredWagonType={filters.wagonType !== 'all' ? filters.wagonType : null}
                 />
               ))
             ) : (
@@ -881,7 +887,7 @@ function SearchPage() {
                 <h3 className="search-results__empty-title">Поезда не найдены</h3>
                 <p className="search-results__empty-text">
                   {trains.length > 0 
-                    ? 'Попробуйте изменить параметры фильтров' 
+                    ? `Нет поездов с типом вагона "${activeWagonTypeLabel}". Попробуйте изменить параметры фильтров` 
                     : error || 'К сожалению, на выбранные даты поездов не найдено'
                   }
                 </p>
@@ -895,7 +901,6 @@ function SearchPage() {
             )}
           </div>
 
-          {/* Пагинация */}
           {filteredTrains.length > 0 && (
             <div className="search-results__pagination">
               <button className="pagination__button pagination__button--prev" disabled>
