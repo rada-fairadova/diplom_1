@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { TicketProvider } from './context/TicketContext';
 import LoadingScreen from './components/LoadingScreen/LoadingScreen';
 import Header from './components/Header/Header';
@@ -13,7 +13,7 @@ import OrderSuccessPage from './pages/OrderSuccessPage/OrderSuccessPage';
 function App() {
   return (
     <TicketProvider>
-      <BrowserRouter>
+      <HashRouter>
         <LoadingScreen />
         <Header />
         <div className="App">
@@ -28,7 +28,7 @@ function App() {
           </Routes>
           <Footer />
         </div>
-      </BrowserRouter>
+      </HashRouter>
     </TicketProvider>
   );
 }
