@@ -416,17 +416,79 @@ const getMinPrice = (route) => {
   return Math.min(...prices);
 };
 
+// formatRouteForUI
+
 const formatRouteForUI = (apiRoute) => {
+  // Проверяем структуру API ответа
   const departure = apiRoute.departure || apiRoute;
+  
+  // Получаем минимальную цену из всех доступных классов
+  const priceInfo = departure.price_info || {};
+  const availableSeatsInfo = departure.available_seats_info || {};
+  
+  // Формируем список вагонов на основе доступных классов
+  const wagons = [];
+  
+  if (departure.have_first_class || priceInfo.first) {
+    wagons.push({
+      id: `wagon-${apiRoute._id}-first`,
+      type: 'first',
+      name: 'Люкс',
+      price: priceInfo.first?.bottom_price || priceInfo.first?.price || 0,
+      availableSeats: availableSeatsInfo.first || departure.available_first_class || 0,
+      topPrice: priceInfo.first?.top_price || priceInfo.first?.price * 1.2 || 0
+    });
+  }
+  
+  if (departure.have_second_class || priceInfo.second) {
+    wagons.push({
+      id: `wagon-${apiRoute._id}-second`,
+      type: 'second',
+      name: 'Купе',
+      price: priceInfo.second?.bottom_price || priceInfo.second?.price || 0,
+      availableSeats: availableSeatsInfo.second || departure.available_second_class || 0,
+      topPrice: priceInfo.second?.top_price || priceInfo.second?.price * 1.2 || 0
+    });
+  }
+  
+  if (departure.have_third_class || priceInfo.third) {
+    wagons.push({
+      id: `wagon-${apiRoute._id}-third`,
+      type: 'third',
+      name: 'Плацкарт',
+      price: priceInfo.third?.bottom_price || priceInfo.third?.price || 0,
+      availableSeats: availableSeatsInfo.third || departure.available_third_class || 0,
+      topPrice: priceInfo.third?.top_price || priceInfo.third?.price * 1.2 || 0
+    });
+  }
+  
+  if (departure.have_fourth_class || priceInfo.fourth) {
+    wagons.push({
+      id: `wagon-${apiRoute._id}-fourth`,
+      type: 'fourth',
+      name: 'Сидячий',
+      price: priceInfo.fourth?.bottom_price || priceInfo.fourth?.price || 0,
+      availableSeats: availableSeatsInfo.fourth || departure.available_fourth_class || 0,
+      topPrice: priceInfo.fourth?.top_price || priceInfo.fourth?.price * 1.2 || 0
+    });
+  }
+  
+  // Фильтруем вагоны с ценой > 0
+  const validWagons = wagons.filter(w => w.price > 0);
+  
+  // Вычисляем минимальную цену из всех вагонов
+  const minPrice = validWagons.length > 0 
+    ? Math.min(...validWagons.map(w => w.price))
+    : 0;
   
   return {
     id: apiRoute._id || apiRoute.id,
     number: departure.train?.number || departure.train?.name || 'Unknown',
     name: `${departure.from?.city?.name || 'Unknown'} → ${departure.to?.city?.name || 'Unknown'}`,
     fromCity: departure.from?.city?.name || 'Unknown',
-    fromStation: departure.from?.railway_station_name || 'Unknown',
+    fromStation: departure.from?.railway_station_name || 'Unknown Station',
     toCity: departure.to?.city?.name || 'Unknown',
-    toStation: departure.to?.railway_station_name || 'Unknown',
+    toStation: departure.to?.railway_station_name || 'Unknown Station',
     departureTime: departure.from?.datetime || new Date().toISOString(),
     arrivalTime: departure.to?.datetime || new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
     departureDate: departure.from?.datetime ? 
@@ -436,51 +498,11 @@ const formatRouteForUI = (apiRoute) => {
       new Date(departure.to.datetime).toLocaleDateString('ru-RU') : 
       new Date(Date.now() + 8 * 60 * 60 * 1000).toLocaleDateString('ru-RU'),
     duration: departure.duration || 0,
-    minPrice: getMinPrice(apiRoute),
-    priceInfo: departure.price_info,
-    availableSeatsInfo: departure.available_seats_info,
+    minPrice: minPrice,
+    wagons: validWagons,
     hasWifi: departure.have_wifi || false,
     hasConditioner: departure.have_air_conditioning || false,
-    hasLinens: departure.have_linens_included || false,
-    // Собираем информацию о вагонах
-    wagons: [
-      ...(departure.have_first_class ? [{
-        id: `wagon-${apiRoute._id}-first`,
-        type: 'first',
-        name: 'Люкс',
-        price: departure.price_info?.first?.bottom_price || 0,
-        availableSeats: departure.available_seats_info?.first || 0,
-        topPrice: departure.price_info?.first?.top_price || 0,
-        number: '1'
-      }] : []),
-      ...(departure.have_second_class ? [{
-        id: `wagon-${apiRoute._id}-second`,
-        type: 'second',
-        name: 'Купе',
-        price: departure.price_info?.second?.bottom_price || 0,
-        availableSeats: departure.available_seats_info?.second || 0,
-        topPrice: departure.price_info?.second?.top_price || 0,
-        number: '2'
-      }] : []),
-      ...(departure.have_third_class ? [{
-        id: `wagon-${apiRoute._id}-third`,
-        type: 'third',
-        name: 'Плацкарт',
-        price: departure.price_info?.third?.bottom_price || 0,
-        availableSeats: departure.available_seats_info?.third || 0,
-        topPrice: departure.price_info?.third?.top_price || 0,
-        number: '3'
-      }] : []),
-      ...(departure.have_fourth_class ? [{
-        id: `wagon-${apiRoute._id}-fourth`,
-        type: 'fourth',
-        name: 'Сидячий',
-        price: departure.price_info?.fourth?.bottom_price || 0,
-        availableSeats: departure.available_seats_info?.fourth || 0,
-        topPrice: departure.price_info?.fourth?.top_price || 0,
-        number: '4'
-      }] : [])
-    ].filter(wagon => wagon.price > 0)
+    hasLinens: departure.have_linens_included || false
   };
 };
 

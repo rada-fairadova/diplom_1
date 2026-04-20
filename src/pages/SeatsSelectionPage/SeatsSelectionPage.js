@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTicket } from '../../context/TicketContext';
 import { trainApi } from '../../services/api';
@@ -47,14 +47,75 @@ const wagonTypesConfig = [
 function SeatsSelectionPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedTrain, setSelectedWagon, setSelectedSeats } = useTicket();
+  const { selectedTrain, setSelectedWagon: setSelectedWagonContext, setSelectedSeats: setSelectedSeatsContext } = useTicket();
   
-  const [selectedWagon, setSelectedWagonState] = useState(null);
-  const [selectedSeats, setSelectedSeatsState] = useState([]);
+  // Локальное состояние
+  const [selectedWagon, setSelectedWagonLocal] = useState(null);
+  const [selectedSeats, setSelectedSeatsLocal] = useState([]);
   const [availableWagons, setAvailableWagons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [seatMap, setSeatMap] = useState([]);
+
+  // Функция для получения цены по умолчанию
+  const getDefaultPrice = useCallback((type) => {
+    const prices = {
+      'lux': 4950,
+      'coupe': 3820,
+      'platzkart': 2530,
+      'sitting': 1920
+    };
+    return prices[type] || 2000;
+  }, []);
+
+  // Функция для генерации занятых мест
+  const generateOccupiedSeats = useCallback((totalSeats, availableSeats) => {
+    const occupiedCount = totalSeats - availableSeats;
+    const occupiedSeats = [];
+    
+    // Генерируем случайные занятые места
+    for (let i = 0; i < occupiedCount; i++) {
+      let seat;
+      do {
+        seat = Math.floor(Math.random() * totalSeats) + 1;
+      } while (occupiedSeats.includes(seat));
+      occupiedSeats.push(seat);
+    }
+    
+    return occupiedSeats;
+  }, []);
+
+  // Обработчик выбора вагона
+  const handleWagonSelect = useCallback((wagon) => {
+    console.log('Выбран вагон:', wagon);
+    setSelectedWagonLocal(wagon);
+    setSelectedSeatsLocal([]); // Сбрасываем выбранные места при смене вагона
+  }, []);
+
+  // Обработчик выбора места
+  const handleSeatSelect = useCallback((seatNumber) => {
+    // Проверяем, доступно ли место
+    const seat = seatMap.find(s => s.number === seatNumber);
+    if (!seat || !seat.available) {
+      alert('Это место уже занято или недоступно');
+      return;
+    }
+
+    setSelectedSeatsLocal(prev => {
+      if (prev.includes(seatNumber)) {
+        // Убираем место из выбранных
+        return prev.filter(s => s !== seatNumber);
+      } else {
+        // Добавляем место в выбранные
+        if (prev.length < 4) {
+          return [...prev, seatNumber];
+        } else {
+          alert('Максимальное количество мест для бронирования - 4');
+          return prev;
+        }
+      }
+    });
+  }, [seatMap]);
 
   // Загрузка данных о вагонах
   useEffect(() => {
@@ -73,19 +134,19 @@ function SeatsSelectionPage() {
         // Используем вагоны из выбранного поезда
         if (selectedTrain.wagons && selectedTrain.wagons.length > 0) {
           // Преобразуем вагоны из поезда
-          const wagons = selectedTrain.wagons.map(wagon => {
+          const wagons = selectedTrain.wagons.map((wagon, index) => {
             const wagonType = wagonTypesConfig.find(w => 
-              w.type === wagon.type
+              w.type === (wagon.type || wagon.apiType)
             ) || wagonTypesConfig[1]; // По умолчанию купе
 
             return {
-              id: wagon.id || `wagon-${wagon.type}-${Math.random()}`,
-              number: wagon.number || wagonTypesConfig.findIndex(w => w.type === wagon.type) + 1,
-              type: wagon.type,
-              name: wagonType.name,
-              totalSeats: wagonType.totalSeats,
+              id: wagon.id || `wagon-${wagon.type}-${index}`,
+              number: wagon.number || (index + 1),
+              type: wagon.type || wagon.apiType,
+              name: wagon.name || wagonType.name,
+              totalSeats: wagon.totalSeats || wagonType.totalSeats,
               availableSeats: wagon.availableSeats || Math.floor(Math.random() * 20) + 10,
-              price: wagon.price || getDefaultPrice(wagon.type),
+              price: wagon.price || getDefaultPrice(wagon.type || wagon.apiType),
               features: wagonType.features,
               icon: wagonType.icon,
               seatsPerRow: wagonType.seatsPerRow
@@ -101,18 +162,20 @@ function SeatsSelectionPage() {
           }
         } else {
           // Если нет вагонов в поезде, используем моковые данные
-          setAvailableWagons(getMockWagons());
-          if (getMockWagons().length > 0) {
-            handleWagonSelect(getMockWagons()[0]);
+          const mockWagons = getMockWagons();
+          setAvailableWagons(mockWagons);
+          if (mockWagons.length > 0) {
+            handleWagonSelect(mockWagons[0]);
           }
         }
       } catch (err) {
         console.error('Ошибка при загрузке мест:', err);
         setError('Не удалось загрузить информацию о местах');
         // Используем моковые данные в качестве резервного варианта
-        setAvailableWagons(getMockWagons());
-        if (getMockWagons().length > 0) {
-          handleWagonSelect(getMockWagons()[0]);
+        const mockWagons = getMockWagons();
+        setAvailableWagons(mockWagons);
+        if (mockWagons.length > 0) {
+          handleWagonSelect(mockWagons[0]);
         }
       } finally {
         setLoading(false);
@@ -120,7 +183,7 @@ function SeatsSelectionPage() {
     };
 
     fetchSeatsData();
-  }, [selectedTrain, navigate]);
+  }, [selectedTrain, navigate, handleWagonSelect, getDefaultPrice]);
 
   // Генерация карты мест при выборе вагона
   useEffect(() => {
@@ -145,68 +208,27 @@ function SeatsSelectionPage() {
 
     const newSeatMap = generateSeatMap();
     setSeatMap(newSeatMap);
-    setSelectedSeatsState([]); // Сбрасываем выбранные места при смене вагона
+    setSelectedSeatsLocal([]); // Сбрасываем выбранные места при смене вагона
     
     console.log(`Сгенерирована карта мест для вагона ${selectedWagon.type}:`, newSeatMap.length, 'мест');
-  }, [selectedWagon]);
+  }, [selectedWagon, generateOccupiedSeats]);
 
-  const handleWagonSelect = (wagon) => {
-    console.log('Выбран вагон:', wagon);
-    setSelectedWagonState(wagon);
-  };
-
-  const handleSeatSelect = (seatNumber) => {
-    // Проверяем, доступно ли место
-    const seat = seatMap.find(s => s.number === seatNumber);
-    if (!seat || !seat.available) {
-      alert('Это место уже занято или недоступно');
-      return;
-    }
-
-    if (selectedSeats.includes(seatNumber)) {
-      // Убираем место из выбранных
-      setSelectedSeatsState(selectedSeats.filter(s => s !== seatNumber));
-    } else {
-      // Добавляем место в выбранные
-      if (selectedSeats.length < 4) {
-        setSelectedSeatsState([...selectedSeats, seatNumber]);
-      } else {
-        alert('Максимальное количество мест для бронирования - 4');
-      }
-    }
-  };
-
-  const generateOccupiedSeats = (totalSeats, availableSeats) => {
-    const occupiedCount = totalSeats - availableSeats;
-    const occupiedSeats = [];
-    
-    // Генерируем случайные занятые места
-    for (let i = 0; i < occupiedCount; i++) {
-      let seat;
-      do {
-        seat = Math.floor(Math.random() * totalSeats) + 1;
-      } while (occupiedSeats.includes(seat));
-      occupiedSeats.push(seat);
-    }
-    
-    return occupiedSeats;
-  };
-
-  const calculateTotalPrice = () => {
+  // Функция для расчета общей стоимости
+  const calculateTotalPrice = useCallback(() => {
     if (!selectedWagon || selectedSeats.length === 0) return 0;
-    
     return selectedSeats.length * selectedWagon.price;
-  };
+  }, [selectedWagon, selectedSeats]);
 
-  const handleContinue = () => {
+  // Обработчик продолжения
+  const handleContinue = useCallback(() => {
     if (selectedSeats.length === 0) {
       alert('Пожалуйста, выберите хотя бы одно место');
       return;
     }
     
     // Сохраняем выбранный вагон и места в контекст
-    setSelectedWagon(selectedWagon);
-    setSelectedSeats(selectedSeats);
+    setSelectedWagonContext(selectedWagon);
+    setSelectedSeatsContext(selectedSeats);
     
     console.log('Сохранены данные:', {
       wagon: selectedWagon,
@@ -216,23 +238,15 @@ function SeatsSelectionPage() {
     
     // Переходим на страницу пассажиров
     navigate('/passengers');
-  };
+  }, [selectedWagon, selectedSeats, calculateTotalPrice, setSelectedWagonContext, setSelectedSeatsContext, navigate]);
 
-  const formatPrice = (price) => {
+  // Форматирование цены
+  const formatPrice = useCallback((price) => {
     return price ? price.toLocaleString('ru-RU') : '0';
-  };
+  }, []);
 
-  const getDefaultPrice = (type) => {
-    const prices = {
-      'lux': 4950,
-      'coupe': 3820,
-      'platzkart': 2530,
-      'sitting': 1920
-    };
-    return prices[type] || 2000;
-  };
-
-  const getMockWagons = () => {
+  // Моковые вагоны
+  const getMockWagons = useCallback(() => {
     return [
       {
         id: 'lux-1',
@@ -283,10 +297,10 @@ function SeatsSelectionPage() {
         seatsPerRow: 6
       }
     ];
-  };
+  }, []);
 
-  // Функция для отображения мест в виде сетки с учетом типа вагона
-  const renderSeatGrid = () => {
+  // Функция для отображения мест в виде сетки
+  const renderSeatGrid = useCallback(() => {
     if (!selectedWagon || seatMap.length === 0) return null;
 
     const seatsPerRow = selectedWagon.seatsPerRow || 4;
@@ -331,8 +345,9 @@ function SeatsSelectionPage() {
         })}
       </div>
     );
-  };
+  }, [selectedWagon, seatMap, selectedSeats, handleSeatSelect, formatPrice]);
 
+  // Состояние загрузки
   if (loading) {
     return (
       <div className="seats-selection-page loading">
@@ -342,6 +357,7 @@ function SeatsSelectionPage() {
     );
   }
 
+  // Состояние ошибки - нет поезда
   if (!selectedTrain) {
     return (
       <div className="seats-selection-page error">
@@ -444,6 +460,7 @@ function SeatsSelectionPage() {
                       key={wagon.id}
                       className={`wagon-type-card ${selectedWagon?.id === wagon.id ? 'selected' : ''}`}
                       onClick={() => handleWagonSelect(wagon)}
+                      style={{ cursor: 'pointer' }}
                     >
                       <div className="wagon-type-icon">{wagon.icon}</div>
                       <div className="wagon-type-content">
@@ -544,7 +561,7 @@ function SeatsSelectionPage() {
                 {selectedSeats.length > 0 && (
                   <button 
                     className="clear-selection-btn"
-                    onClick={() => setSelectedSeatsState([])}
+                    onClick={() => setSelectedSeatsLocal([])}
                   >
                     Очистить выбор мест
                   </button>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 
 const TicketContext = createContext();
 
@@ -11,7 +11,7 @@ export const useTicket = () => {
 };
 
 export const TicketProvider = ({ children }) => {
-  // Состояние поиска
+  // Состояние поиска с восстановлением из localStorage
   const [searchParams, setSearchParams] = useState({
     from: '',
     to: '',
@@ -39,6 +39,31 @@ export const TicketProvider = ({ children }) => {
     cvv: '',
     holder: ''
   });
+
+  // Восстановление параметров поиска из localStorage при загрузке
+  useEffect(() => {
+    const savedParams = localStorage.getItem('searchParams');
+    if (savedParams) {
+      try {
+        const parsed = JSON.parse(savedParams);
+        setSearchParams(prev => ({
+          ...prev,
+          ...parsed
+        }));
+        console.log('Восстановлены параметры поиска:', parsed);
+      } catch (e) {
+        console.error('Ошибка восстановления параметров поиска', e);
+      }
+    }
+  }, []);
+
+  // Сохранение параметров поиска в localStorage
+  useEffect(() => {
+    if (searchParams.from || searchParams.to) {
+      localStorage.setItem('searchParams', JSON.stringify(searchParams));
+      console.log('Сохранены параметры поиска:', searchParams);
+    }
+  }, [searchParams]);
 
   // Функция для обновления параметров поиска
   const updateSearchParams = useCallback((newParams) => {
