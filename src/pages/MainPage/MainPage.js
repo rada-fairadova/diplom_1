@@ -24,45 +24,101 @@ function MainPage() {
     fetchLastTickets();
   }, []);
 
+  // Функция форматирования маршрута в билет для последних билетов
+  const formatRouteToLastTicket = (route) => {
+    const from = route.from || {};
+    const to = route.to || {};
+    const fromCity = from.city || {};
+    const toCity = to.city || {};
+    
+    const departureTime = from.datetime ? new Date(from.datetime) : new Date();
+    const arrivalTime = to.datetime ? new Date(to.datetime) : new Date();
+    
+    // Вычисляем длительность в минутах
+    let duration = route.duration;
+    if (!duration && departureTime && arrivalTime) {
+      duration = Math.floor((arrivalTime - departureTime) / (1000 * 60));
+    }
+    
+    // Определяем тип вагона по доступным классам
+    let wagonType = 'fourth';
+    if (route.have_first_class) wagonType = 'first';
+    else if (route.have_second_class) wagonType = 'second';
+    else if (route.have_third_class) wagonType = 'third';
+    
+    return {
+      id: route._id,
+      trainNumber: route.train?.name || route.train?.number || 'Unknown',
+      fromCity: fromCity.name || 'Unknown',
+      fromStation: from.railway_station_name || 'Unknown station',
+      toCity: toCity.name || 'Unknown',
+      toStation: to.railway_station_name || 'Unknown station',
+      departureDate: departureTime.toLocaleDateString('ru-RU'),
+      arrivalDate: arrivalTime.toLocaleDateString('ru-RU'),
+      departureTime: departureTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      arrivalTime: arrivalTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      duration: duration || 0,
+      minPrice: trainApi.getMinPrice(route),
+      price: trainApi.getMinPrice(route),
+      wagonType: wagonType
+    };
+  };
+
   const fetchLastTickets = async () => {
     try {
       setLoading(true);
-      // Получаем последние билеты из API
-      // Здесь мы можем использовать поиск с дефолтными параметрами
+      
+      // Получаем список городов
+      const cities = await trainApi.getAllCities();
+      
+      if (!cities || cities.length < 2) {
+        console.warn('Недостаточно городов для поиска');
+        setLastTickets(getMockTickets());
+        return;
+      }
+      
+      // Ищем популярные направления (Москва и Санкт-Петербург)
+      const moscow = cities.find(city => 
+        city.name?.toLowerCase().includes('москв') || 
+        city.name?.toLowerCase().includes('moscow')
+      );
+      
+      const stPetersburg = cities.find(city => 
+        city.name?.toLowerCase().includes('санкт-петербург') || 
+        city.name?.toLowerCase().includes('спб') ||
+        city.name?.toLowerCase().includes('петербург')
+      );
+      
+      let fromCity = null;
+      let toCity = null;
+      
+      // Если нашли Москву и СПБ - используем их
+      if (moscow && stPetersburg) {
+        fromCity = moscow;
+        toCity = stPetersburg;
+      } else {
+        // Иначе берем первые два города из списка
+        fromCity = cities[0];
+        toCity = cities[1];
+      }
+      
+      // Выполняем поиск маршрутов
       const response = await trainApi.searchRoutes({
-        fromCityId: null,
-        toCityId: null,
-        departureDate: new Date().toISOString().split('T')[0],
+        from_city_id: fromCity._id,
+        to_city_id: toCity._id,
+        date_start: new Date().toISOString().split('T')[0],
         limit: 6,
         sort: 'date'
       });
       
-      if (response && response.items) {
-        const formattedTickets = response.items.map(route => ({
-          id: route._id,
-          trainNumber: route.train?.name || 'Unknown',
-          fromCity: route.from?.city || 'Unknown',
-          fromStation: route.from?.railway_station_name || 'Unknown station',
-          toCity: route.to?.city || 'Unknown',
-          toStation: route.to?.railway_station_name || 'Unknown station',
-          departureDate: route.departure_time ? 
-            new Date(route.departure_time).toLocaleDateString('ru-RU') : '...',
-          arrivalDate: route.arrival_time ? 
-            new Date(route.arrival_time).toLocaleDateString('ru-RU') : '...',
-          departureTime: route.departure_time ? 
-            new Date(route.departure_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '...',
-          arrivalTime: route.arrival_time ? 
-            new Date(route.arrival_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '...',
-          duration: route.duration || 0,
-          minPrice: trainApi.getMinPrice(route),
-          price: trainApi.getMinPrice(route),
-          // Определяем тип вагона по доступным классам
-          wagonType: route.have_first_class ? 'first' : 
-                     route.have_second_class ? 'second' : 
-                     route.have_third_class ? 'third' : 'fourth'
-        }));
+      if (response && response.items && response.items.length > 0) {
+        const formattedTickets = response.items.map(route => formatRouteToLastTicket(route));
         setLastTickets(formattedTickets);
+      } else {
+        // Если маршрутов нет, используем мок-данные
+        setLastTickets(getMockTickets());
       }
+      
     } catch (error) {
       console.error('Error fetching last tickets:', error);
       // В случае ошибки показываем заглушки
@@ -119,6 +175,51 @@ function MainPage() {
         duration: 875,
         price: 3500,
         wagonType: 'second'
+      },
+      {
+        id: '4',
+        trainNumber: '001А',
+        fromCity: 'Новосибирск',
+        fromStation: 'Новосибирск-Главный',
+        toCity: 'Владивосток',
+        toStation: 'Владивосток-Пассажирский',
+        departureDate: '29.12.2023',
+        arrivalDate: '31.12.2023',
+        departureTime: '15:20',
+        arrivalTime: '08:45',
+        duration: 2525,
+        price: 8500,
+        wagonType: 'second'
+      },
+      {
+        id: '5',
+        trainNumber: '042Ч',
+        fromCity: 'Екатеринбург',
+        fromStation: 'Екатеринбург-Пассажирский',
+        toCity: 'Тюмень',
+        toStation: 'Тюменский вокзал',
+        departureDate: '28.12.2023',
+        arrivalDate: '28.12.2023',
+        departureTime: '23:50',
+        arrivalTime: '06:15',
+        duration: 385,
+        price: 1800,
+        wagonType: 'third'
+      },
+      {
+        id: '6',
+        trainNumber: '055М',
+        fromCity: 'Самара',
+        fromStation: 'Самарский вокзал',
+        toCity: 'Казань',
+        toStation: 'Казанский вокзал',
+        departureDate: '30.12.2023',
+        arrivalDate: '30.12.2023',
+        departureTime: '08:30',
+        arrivalTime: '14:20',
+        duration: 350,
+        price: 2200,
+        wagonType: 'fourth'
       }
     ];
   };
@@ -135,19 +236,23 @@ function MainPage() {
         // Форматируем данные маршрута для UI
         const trainFromTicket = trainApi.formatRouteForUI(routeDetails);
         
-        // Сохраняем в контекст
-        setSelectedTrain(trainFromTicket);
-        
-        // Выбираем первый вагон, если есть
-        if (trainFromTicket.wagons && trainFromTicket.wagons.length > 0) {
-          setSelectedWagon(trainFromTicket.wagons[0]);
+        if (trainFromTicket) {
+          // Сохраняем в контекст
+          setSelectedTrain(trainFromTicket);
+          
+          // Выбираем первый вагон, если есть
+          if (trainFromTicket.wagons && trainFromTicket.wagons.length > 0) {
+            setSelectedWagon(trainFromTicket.wagons[0]);
+          }
+          
+          // Сбрасываем выбранные места
+          setSelectedSeats([]);
+          
+          // Переходим на страницу выбора мест
+          navigate('/seats');
+        } else {
+          handleFallbackNavigation(ticketData);
         }
-        
-        // Сбрасываем выбранные места
-        setSelectedSeats([]);
-        
-        // Переходим на страницу выбора мест
-        navigate('/seats');
       } else {
         // Если не удалось получить детали, используем данные из билета
         handleFallbackNavigation(ticketData);
@@ -208,10 +313,16 @@ function MainPage() {
   // Обработка поиска билетов
   const handleSearch = async (searchParams) => {
     try {
+      // Проверяем наличие обязательных параметров
+      if (!searchParams.fromCity?.id || !searchParams.toCity?.id) {
+        console.error('Не указаны города отправления и прибытия');
+        return;
+      }
+
       // Преобразуем параметры поиска для API
       const apiParams = {
-        from_city_id: searchParams.fromCity?.id,
-        to_city_id: searchParams.toCity?.id,
+        from_city_id: searchParams.fromCity.id,
+        to_city_id: searchParams.toCity.id,
         date_start: searchParams.departureDate,
         date_end: searchParams.arrivalDate || searchParams.departureDate,
         have_first_class: searchParams.filters?.wagonTypes?.includes('first') || false,
