@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTicket } from '../../context/TicketContext';
 import { trainApi } from '../../services/api';
@@ -85,7 +85,7 @@ function SeatsSelectionPage() {
     return occupiedSeats;
   }, []);
 
-  // Обработчик выбора вагона
+  // Обработчик выбора вагона (ИСПРАВЛЕНО: стабильная функция)
   const handleWagonSelect = useCallback((wagon) => {
     console.log('Выбран вагон:', wagon);
     setSelectedWagonLocal(wagon);
@@ -117,11 +117,22 @@ function SeatsSelectionPage() {
     });
   }, [seatMap]);
 
-  // Загрузка данных о вагонах
+  // Загрузка данных о вагонах (ИСПРАВЛЕНО: убрана лишняя зависимость)
   useEffect(() => {
     const fetchSeatsData = async () => {
+      // ИСПРАВЛЕНО: Проверяем наличие selectedTrain
       if (!selectedTrain) {
+        console.warn('Нет выбранного поезда, перенаправляем на поиск');
         navigate('/search');
+        return;
+      }
+
+      // ИСПРАВЛЕНО: Извлекаем данные правильно, учитывая структуру
+      const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
+
+      if (!trainData || !trainData.number) {
+        setError('Данные о поезде повреждены или неполны. Пожалуйста, начните поиск заново.');
+        setLoading(false);
         return;
       }
 
@@ -129,44 +140,41 @@ function SeatsSelectionPage() {
         setLoading(true);
         setError(null);
 
-        console.log('Загружаем места для поезда:', selectedTrain);
+        console.log('Загружаем места для поезда:', trainData);
 
         // Используем вагоны из выбранного поезда
-        if (selectedTrain.wagons && selectedTrain.wagons.length > 0) {
-          // Преобразуем вагоны из поезда
-          const wagons = selectedTrain.wagons.map((wagon, index) => {
-            const wagonType = wagonTypesConfig.find(w => 
+        if (trainData.wagons && trainData.wagons.length > 0) {
+          // ИСПРАВЛЕНО: Преобразуем вагоны правильно
+          const wagons = trainData.wagons.map((wagon, index) => {
+            // Ищем конфигурацию вагона по типу
+            const wagonTypeConfig = wagonTypesConfig.find(w => 
               w.type === (wagon.type || wagon.apiType)
+            ) || wagonTypesConfig.find(w => 
+              w.type === (wagon.apiType || wagon.type)
             ) || wagonTypesConfig[1]; // По умолчанию купе
 
             return {
+              ...wagonTypeConfig, // Берем полную конфигурацию
               id: wagon.id || `wagon-${wagon.type}-${index}`,
               number: wagon.number || (index + 1),
               type: wagon.type || wagon.apiType,
-              name: wagon.name || wagonType.name,
-              totalSeats: wagon.totalSeats || wagonType.totalSeats,
-              availableSeats: wagon.availableSeats || Math.floor(Math.random() * 20) + 10,
+              name: wagon.name || wagonTypeConfig.name,
+              totalSeats: wagon.totalSeats || wagonTypeConfig.totalSeats,
+              availableSeats: wagon.availableSeats || Math.floor(Math.random() * 15) + 5,
               price: wagon.price || getDefaultPrice(wagon.type || wagon.apiType),
-              features: wagonType.features,
-              icon: wagonType.icon,
-              seatsPerRow: wagonType.seatsPerRow
+              features: wagonTypeConfig.features,
+              icon: wagonTypeConfig.icon,
+              seatsPerRow: wagonTypeConfig.seatsPerRow
             };
           });
 
           console.log('Сформированные вагоны:', wagons);
           setAvailableWagons(wagons);
-
-          // Автоматически выбираем первый вагон
-          if (wagons.length > 0) {
-            handleWagonSelect(wagons[0]);
-          }
         } else {
           // Если нет вагонов в поезде, используем моковые данные
+          console.warn('У поезда нет вагонов, используем моковые');
           const mockWagons = getMockWagons();
           setAvailableWagons(mockWagons);
-          if (mockWagons.length > 0) {
-            handleWagonSelect(mockWagons[0]);
-          }
         }
       } catch (err) {
         console.error('Ошибка при загрузке мест:', err);
@@ -174,16 +182,20 @@ function SeatsSelectionPage() {
         // Используем моковые данные в качестве резервного варианта
         const mockWagons = getMockWagons();
         setAvailableWagons(mockWagons);
-        if (mockWagons.length > 0) {
-          handleWagonSelect(mockWagons[0]);
-        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchSeatsData();
-  }, [selectedTrain, navigate, handleWagonSelect, getDefaultPrice]);
+  }, [selectedTrain, navigate, getDefaultPrice]); // ИСПРАВЛЕНО: убран handleWagonSelect из зависимостей
+
+  // ИСПРАВЛЕНО: Отдельный эффект для выбора первого вагона по умолчанию
+  useEffect(() => {
+    if (availableWagons.length > 0 && !selectedWagon) {
+      handleWagonSelect(availableWagons[0]);
+    }
+  }, [availableWagons, selectedWagon, handleWagonSelect]);
 
   // Генерация карты мест при выборе вагона
   useEffect(() => {
@@ -372,6 +384,9 @@ function SeatsSelectionPage() {
     );
   }
 
+  // ИСПРАВЛЕНО: Извлекаем данные поезда для отображения
+  const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
+
   return (
     <div className="seats-selection-page">
       {/* Шаги оформления */}
@@ -400,33 +415,33 @@ function SeatsSelectionPage() {
 
       <div className="seats-selection-container">
         <main className="seats-selection-main">
-          {/* Информация о поезде */}
+          {/* Информация о поезде (ИСПРАВЛЕНО: используем trainData) */}
           <div className="trip-summary">
             <h1 className="trip-summary__title">Выбор мест в вагоне</h1>
             <div className="trip-summary__info">
               <div className="trip-summary__train">
-                <span className="train-number">Поезд №{selectedTrain.number}</span>
+                <span className="train-number">Поезд №{trainData.number}</span>
                 <span className="train-route">
-                  {selectedTrain.fromCity} → {selectedTrain.toCity}
+                  {trainData.fromCity} → {trainData.toCity}
                 </span>
               </div>
               
               <div className="trip-summary__details">
                 <div className="trip-detail">
-                  <div className="trip-detail__station">{selectedTrain.fromStation}</div>
+                  <div className="trip-detail__station">{trainData.fromStation}</div>
                   <div className="trip-detail__time">
-                    {selectedTrain.departureDate || new Date(selectedTrain.departureTime).toLocaleDateString('ru-RU')}, 
-                    {new Date(selectedTrain.departureTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    {trainData.departureDate || new Date(trainData.departureTime).toLocaleDateString('ru-RU')}, 
+                    {new Date(trainData.departureTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
                 
                 <div className="trip-detail-separator">↓</div>
                 
                 <div className="trip-detail">
-                  <div className="trip-detail__station">{selectedTrain.toStation}</div>
+                  <div className="trip-detail__station">{trainData.toStation}</div>
                   <div className="trip-detail__time">
-                    {selectedTrain.arrivalDate || new Date(selectedTrain.arrivalTime).toLocaleDateString('ru-RU')}, 
-                    {new Date(selectedTrain.arrivalTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    {trainData.arrivalDate || new Date(trainData.arrivalTime).toLocaleDateString('ru-RU')}, 
+                    {new Date(trainData.arrivalTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>
