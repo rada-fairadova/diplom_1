@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './Header.css';
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -15,20 +16,48 @@ function Header() {
     window.scrollTo(0, 0);
   };
 
-  const handleNavClick = (e, target) => {
-    e.preventDefault();
-    if (window.location.pathname === '/') {
-      // На главной странице - скроллим к секции
+  // Функция для скролла к секции
+  const scrollToSection = useCallback((target) => {
+    // Небольшая задержка, чтобы DOM успел обновиться
+    setTimeout(() => {
       const element = document.getElementById(target);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
       }
-    } else {
-      // На других страницах - переходим на главную с якорем
-      navigate(`/#${target}`);
+    }, 100);
+  }, []);
+
+  // Обработчик хеша при загрузке главной страницы
+  useEffect(() => {
+    if (location.pathname === '/' && location.hash) {
+      const target = location.hash.replace('#', '');
+      scrollToSection(target);
     }
+  }, [location, scrollToSection]);
+
+  const handleNavClick = (e, target) => {
+    e.preventDefault();
+    
+    if (window.location.pathname === '/') {
+      // На главной странице - просто скроллим к секции
+      scrollToSection(target);
+    } else {
+      // На других страницах - переходим на главную с сохранением якоря
+      navigate('/', { state: { scrollTo: target } });
+    }
+    
     setIsMenuOpen(false);
   };
+
+  // Обработчик для скролла после перехода с другой страницы
+  useEffect(() => {
+    if (location.pathname === '/' && location.state?.scrollTo) {
+      const target = location.state.scrollTo;
+      // Очищаем state, чтобы не скроллить повторно при обновлении
+      window.history.replaceState({}, document.title);
+      scrollToSection(target);
+    }
+  }, [location, scrollToSection]);
 
   return (
     <header className="header">

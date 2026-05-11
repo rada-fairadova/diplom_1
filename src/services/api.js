@@ -82,7 +82,7 @@ const trainApi = {
       return cities;
     } catch (error) {
       console.error('❌ Ошибка поиска городов:', error);
-      // ВАЖНО: Возвращаем моковые данные при ошибке
+      // Возвращаем моковые данные при ошибке
       return [
         { _id: '1', id: '1', name: 'Москва' },
         { _id: '2', id: '2', name: 'Санкт-Петербург' },
@@ -100,7 +100,6 @@ const trainApi = {
       
       if (!params.from_city_id || !params.to_city_id) {
         console.warn('⚠️ Не указаны города отправления и прибытия');
-        // Возвращаем моковые данные вместо ошибки
         return this.getMockRoutesResponse();
       }
       
@@ -152,7 +151,6 @@ const trainApi = {
       }
     } catch (error) {
       console.error('❌ Ошибка поиска маршрутов:', error);
-      // ВАЖНО: Возвращаем моковые данные при ошибке
       return this.getMockRoutesResponse();
     }
   },
@@ -287,87 +285,87 @@ const trainApi = {
       
       // Люкс (first class)
       if (route.have_first_class) {
-        const price = priceInfo.first?.bottom_price || priceInfo.first?.price || 0;
+        const price = priceInfo.first?.bottom_price || priceInfo.first?.price || 5000;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-first`,
-          type: 'first',
+          id: `${apiRoute._id || Date.now()}-first-${Math.random().toString(36).substr(2, 5)}`,
+          type: 'lux',
           name: 'Люкс',
           apiType: 'first',
-          price: price || 5000, // Резервная цена если 0
+          price: price,
           availableSeats: availableSeatsInfo.first || route.available_first_class || 10,
-          topPrice: priceInfo.first?.top_price || (price || 5000) * 1.2
+          topPrice: priceInfo.first?.top_price || price * 1.2
         });
       }
       
       // Купе (second class)
       if (route.have_second_class) {
-        const price = priceInfo.second?.bottom_price || priceInfo.second?.price || 0;
+        const price = priceInfo.second?.bottom_price || priceInfo.second?.price || 2500;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-second`,
-          type: 'second',
+          id: `${apiRoute._id || Date.now()}-second-${Math.random().toString(36).substr(2, 5)}`,
+          type: 'coupe',
           name: 'Купе',
           apiType: 'second',
-          price: price || 2500,
+          price: price,
           availableSeats: availableSeatsInfo.second || route.available_second_class || 20,
-          topPrice: priceInfo.second?.top_price || (price || 2500) * 1.2
+          topPrice: priceInfo.second?.top_price || price * 1.2
         });
       }
       
       // Плацкарт (third class)
       if (route.have_third_class) {
-        const price = priceInfo.third?.bottom_price || priceInfo.third?.price || 0;
+        const price = priceInfo.third?.bottom_price || priceInfo.third?.price || 1800;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-third`,
-          type: 'third',
+          id: `${apiRoute._id || Date.now()}-third-${Math.random().toString(36).substr(2, 5)}`,
+          type: 'platzkart',
           name: 'Плацкарт',
           apiType: 'third',
-          price: price || 1800,
+          price: price,
           availableSeats: availableSeatsInfo.third || route.available_third_class || 30,
-          topPrice: priceInfo.third?.top_price || (price || 1800) * 1.2
+          topPrice: priceInfo.third?.top_price || price * 1.2
         });
       }
       
       // Сидячий (fourth class)
       if (route.have_fourth_class) {
-        const price = priceInfo.fourth?.bottom_price || priceInfo.fourth?.price || 0;
+        const price = priceInfo.fourth?.bottom_price || priceInfo.fourth?.price || 1200;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-fourth`,
-          type: 'fourth',
+          id: `${apiRoute._id || Date.now()}-fourth-${Math.random().toString(36).substr(2, 5)}`,
+          type: 'sitting',
           name: 'Сидячий',
           apiType: 'fourth',
-          price: price || 1200,
+          price: price,
           availableSeats: availableSeatsInfo.fourth || route.available_fourth_class || 50,
-          topPrice: priceInfo.fourth?.top_price || (price || 1200) * 1.2
+          topPrice: priceInfo.fourth?.top_price || price * 1.2
         });
       }
       
-      // ВАЖНО: Если вагоны есть, но цены нулевые - используем резервные
+      // Если нет вагонов, добавляем резервные
       if (wagons.length === 0) {
         if (route.have_first_class) {
           wagons.push({
-            id: `${apiRoute._id || Date.now()}-first`,
-            type: 'first', name: 'Люкс', apiType: 'first',
+            id: `${apiRoute._id || Date.now()}-first-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'lux', name: 'Люкс', apiType: 'first',
             price: 5000, availableSeats: 10, topPrice: 6000
           });
         }
         if (route.have_second_class) {
           wagons.push({
-            id: `${apiRoute._id || Date.now()}-second`,
-            type: 'second', name: 'Купе', apiType: 'second',
+            id: `${apiRoute._id || Date.now()}-second-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'coupe', name: 'Купе', apiType: 'second',
             price: 2500, availableSeats: 20, topPrice: 3000
           });
         }
         if (route.have_third_class) {
           wagons.push({
-            id: `${apiRoute._id || Date.now()}-third`,
-            type: 'third', name: 'Плацкарт', apiType: 'third',
+            id: `${apiRoute._id || Date.now()}-third-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'platzkart', name: 'Плацкарт', apiType: 'third',
             price: 1800, availableSeats: 30, topPrice: 2200
           });
         }
         if (route.have_fourth_class) {
           wagons.push({
-            id: `${apiRoute._id || Date.now()}-fourth`,
-            type: 'fourth', name: 'Сидячий', apiType: 'fourth',
+            id: `${apiRoute._id || Date.now()}-fourth-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'sitting', name: 'Сидячий', apiType: 'fourth',
             price: 1200, availableSeats: 50, topPrice: 1500
           });
         }
