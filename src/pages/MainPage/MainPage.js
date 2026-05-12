@@ -18,8 +18,7 @@ function MainPage() {
   const { 
     setSelectedTrain, 
     setSelectedWagon, 
-    setSelectedSeats, 
-    updateSearchParams 
+    setSelectedSeats 
   } = useTicket();
   const [lastTickets, setLastTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -253,11 +252,6 @@ function MainPage() {
           // Сбрасываем выбранные места
           setSelectedSeats([]);
           
-          // Сохраняем тип вагона
-          if (ticketData.wagonType && ticketData.wagonType !== 'all') {
-            localStorage.setItem('selectedWagonType', ticketData.wagonType);
-          }
-          
           // Переходим на страницу выбора мест
           navigate('/seats');
         } else {
@@ -315,11 +309,6 @@ function MainPage() {
     setSelectedTrain(trainFromTicket);
     setSelectedWagon(trainFromTicket.wagons[0]);
     setSelectedSeats([]);
-    
-    // Сохраняем тип вагона
-    if (ticketData.wagonType && ticketData.wagonType !== 'all') {
-      localStorage.setItem('selectedWagonType', ticketData.wagonType);
-    }
     
     // Переходим на страницу выбора мест
     navigate('/seats');

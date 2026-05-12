@@ -35,33 +35,34 @@ function TicketSearch() {
       returnDate: tomorrow.toISOString().split('T')[0]
     }));
 
-    // Восстанавливаем сохраненный тип вагона из localStorage при загрузке
-    const savedWagonType = localStorage.getItem('selectedWagonType');
-    if (savedWagonType && savedWagonType !== 'all') {
-      console.log('🔄 Восстановлен тип вагона в TicketSearch:', savedWagonType);
-      
-      // Маппинг API типов на UI типы
-      const apiToUiMap = {
-        'first': 'lux',
-        'second': 'coupe',
-        'third': 'platzkart',
-        'fourth': 'sitting',
-        'lux': 'lux',
-        'coupe': 'coupe',
-        'platzkart': 'platzkart',
-        'sitting': 'sitting',
-        'any': 'any',
-        'all': 'any'
-      };
-      
-      const uiType = apiToUiMap[savedWagonType] || 'any';
-      
-      setFormData(prev => ({
-        ...prev,
-        ticketType: uiType
-      }));
-      
-      console.log('✅ Установлен тип вагона:', uiType);
+    // Восстанавливаем тип вагона из localStorage если есть
+    try {
+      const savedFilters = localStorage.getItem('train_search_filters');
+      if (savedFilters) {
+        const parsed = JSON.parse(savedFilters);
+        if (parsed.wagonType && parsed.wagonType !== 'all') {
+          // Маппинг API типов на UI типы
+          const apiToUiMap = {
+            'first': 'lux',
+            'second': 'coupe',
+            'third': 'platzkart',
+            'fourth': 'sitting',
+            'lux': 'lux',
+            'coupe': 'coupe',
+            'platzkart': 'platzkart',
+            'sitting': 'sitting'
+          };
+          
+          const uiType = apiToUiMap[parsed.wagonType] || 'any';
+          
+          setFormData(prev => ({
+            ...prev,
+            ticketType: uiType
+          }));
+        }
+      }
+    } catch (e) {
+      // Игнорируем ошибки
     }
   }, []);
 
@@ -82,22 +83,6 @@ function TicketSearch() {
         ...prev,
         [name]: value
       }));
-      
-      // Если изменился тип вагона, сохраняем его в localStorage
-      if (name === 'ticketType') {
-        // Маппинг UI типов на API типы
-        const uiToApiMap = {
-          'any': 'all',
-          'sitting': 'fourth',
-          'platzkart': 'third',
-          'coupe': 'second',
-          'lux': 'first'
-        };
-        
-        const apiType = uiToApiMap[value] || 'all';
-        localStorage.setItem('selectedWagonType', apiType);
-        console.log('💾 Сохранен тип вагона при изменении:', apiType);
-      }
     }
     
     if (errors[name]) {
@@ -170,27 +155,34 @@ function TicketSearch() {
         'lux': 'first'
       };
       
-      const selectedApiType = uiToApiMap[formData.ticketType] || 'all';
+      const selectedWagonType = uiToApiMap[formData.ticketType] || 'all';
       
-      // Сохраняем тип вагона в localStorage перед переходом
-      localStorage.setItem('selectedWagonType', selectedApiType);
-      console.log('💾 Сохранен тип вагона перед отправкой:', selectedApiType);
+      // Сохраняем фильтры в localStorage
+      const filtersToSave = {
+        priceRange: 'all',
+        wagonType: selectedWagonType,
+        departureTime: 'any',
+        hasWifi: false,
+        hasConditioner: false,
+        hasLinens: false
+      };
+      
+      try {
+        localStorage.setItem('train_search_filters', JSON.stringify(filtersToSave));
+      } catch (e) {
+        // Игнорируем ошибки сохранения
+      }
       
       const searchData = {
         ...formData,
         isOneWay,
-        totalPassengers: formData.passengers.adults + formData.passengers.children,
-        selectedWagonType: selectedApiType
+        totalPassengers: formData.passengers.adults + formData.passengers.children
       };
       
       updateSearchParams(searchData);
       
-      // Передаем тип вагона через location state
-      navigate('/search', {
-        state: {
-          selectedWagonType: selectedApiType
-        }
-      });
+      // Переходим на страницу поиска
+      navigate('/search');
     } else {
       setErrors(validationErrors);
     }
@@ -329,7 +321,6 @@ function TicketSearch() {
                   onChange={handleChange}
                   className={`ticket-search__input ${errors.returnDate ? 'ticket-search__input--error' : ''}`}
                   min={formData.departureDate}
-                  disabled={isOneWay}
                 />
                 {errors.returnDate && <span className="ticket-search__error">{errors.returnDate}</span>}
               </>

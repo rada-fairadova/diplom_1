@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTicket } from '../../context/TicketContext';
 import { trainApi } from '../../services/api';
 import OrderSteps from '../../components/OrderSteps/OrderSteps';
@@ -33,9 +33,36 @@ const timeRanges = [
   { value: 'night', label: 'Ночь (23:00–5:00)' }
 ];
 
+// Ключи для localStorage
+const STORAGE_KEYS = {
+  FILTERS: 'train_search_filters',
+  SORT: 'train_search_sort'
+};
+
+// Маппинг API типов на UI типы
+const apiToUiMap = {
+  'first': 'lux',
+  'second': 'coupe',
+  'third': 'platzkart',
+  'fourth': 'sitting',
+  'all': 'all',
+  'lux': 'lux',
+  'coupe': 'coupe',
+  'platzkart': 'platzkart',
+  'sitting': 'sitting'
+};
+
+// Маппинг UI типов на API типы
+const uiToApiMap = {
+  'all': 'all',
+  'lux': 'first',
+  'coupe': 'second',
+  'platzkart': 'third',
+  'sitting': 'fourth'
+};
+
 function SearchPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { searchParams, setSelectedTrain } = useTicket();
 
   const [trains, setTrains] = useState([]);
@@ -44,97 +71,89 @@ function SearchPage() {
   const [error, setError] = useState(null);
   
   // Инициализация фильтров
-  const [filters, setFilters] = useState({
-    priceRange: 'all',
-    wagonType: 'all',
-    departureTime: 'any',
-    hasWifi: false,
-    hasConditioner: false,
-    hasLinens: false
-  });
-  
-  const [sortBy, setSortBy] = useState('departureTime');
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Загружаем сохраненные фильтры при первом рендере
-  useEffect(() => {
-    // Проверяем sessionStorage на флаг сброса
-    const wasReset = sessionStorage.getItem('filtersWereReset');
-    if (wasReset === 'true') {
-      sessionStorage.removeItem('filtersWereReset');
-      setIsInitialized(true);
-      return;
-    }
+  const [filters, setFilters] = useState(() => {
+    const defaultFilters = {
+      priceRange: 'all',
+      wagonType: 'all',
+      departureTime: 'any',
+      hasWifi: false,
+      hasConditioner: false,
+      hasLinens: false
+    };
     
-    // Пытаемся загрузить из localStorage
     try {
-      const savedFilters = localStorage.getItem('searchFilters');
-      
-      if (savedFilters) {
-        const parsed = JSON.parse(savedFilters);
-        
-        setFilters(prev => ({
-          ...prev,
-          ...parsed
-        }));
+      const saved = localStorage.getItem(STORAGE_KEYS.FILTERS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          // Конвертируем API тип в UI тип если нужно
+          if (parsed.wagonType && apiToUiMap[parsed.wagonType]) {
+            parsed.wagonType = apiToUiMap[parsed.wagonType];
+          }
+          return { ...defaultFilters, ...parsed };
+        }
       }
     } catch (e) {
-      console.error('Ошибка загрузки фильтров:', e);
+      // Если ошибка - используем значения по умолчанию
     }
     
-    // Загружаем сортировку
-    const savedSort = localStorage.getItem('searchSortBy');
-    if (savedSort) {
-      setSortBy(savedSort);
-    }
-    
-    setIsInitialized(true);
-  }, []);
-
-  // Сохраняем фильтры при изменении (после инициализации)
-  useEffect(() => {
-    if (!isInitialized) return;
-    
+    return defaultFilters;
+  });
+  
+  // Инициализация сортировки
+  const [sortBy, setSortBy] = useState(() => {
     try {
-      const filtersJSON = JSON.stringify(filters);
-      localStorage.setItem('searchFilters', filtersJSON);
+      const saved = localStorage.getItem(STORAGE_KEYS.SORT);
+      return saved || 'departureTime';
     } catch (e) {
-      console.error('Ошибка сохранения фильтров:', e);
+      return 'departureTime';
     }
-  }, [filters, isInitialized]);
+  });
 
-  // Сохраняем сортировку
+  // Сохраняем фильтры в localStorage при каждом изменении
   useEffect(() => {
-    if (!isInitialized) return;
-    
-    localStorage.setItem('searchSortBy', sortBy);
-  }, [sortBy, isInitialized]);
+    try {
+      // Конвертируем UI тип в API тип для сохранения
+      const filtersToSave = {
+        ...filters,
+        wagonType: uiToApiMap[filters.wagonType] || 'all'
+      };
+      localStorage.setItem(STORAGE_KEYS.FILTERS, JSON.stringify(filtersToSave));
+    } catch (e) {
+      // Игнорируем ошибки сохранения
+    }
+  }, [filters]);
+
+  // Сохраняем сортировку в localStorage при каждом изменении
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SORT, sortBy);
+    } catch (e) {
+      // Игнорируем ошибки сохранения
+    }
+  }, [sortBy]);
 
   // Вспомогательная функция для получения API-типа вагона
   const getWagonApiType = useCallback((wagon) => {
     if (!wagon) return null;
     
+    // Проверяем apiType
     if (wagon.apiType && ['first', 'second', 'third', 'fourth'].includes(wagon.apiType)) {
       return wagon.apiType;
     }
     
+    // Проверяем type
     if (wagon.type && ['first', 'second', 'third', 'fourth'].includes(wagon.type)) {
       return wagon.type;
     }
     
-    const reverseMap = {
-      'lux': 'first',
-      'coupe': 'second',
-      'platzkart': 'third',
-      'sitting': 'fourth'
-    };
-    
-    if (wagon.type && reverseMap[wagon.type]) {
-      return reverseMap[wagon.type];
+    // Проверяем UI типы
+    if (wagon.type && uiToApiMap[wagon.type]) {
+      return uiToApiMap[wagon.type];
     }
     
-    if (wagon.apiType && reverseMap[wagon.apiType]) {
-      return reverseMap[wagon.apiType];
+    if (wagon.apiType && uiToApiMap[wagon.apiType]) {
+      return uiToApiMap[wagon.apiType];
     }
     
     return null;
@@ -171,20 +190,27 @@ function SearchPage() {
       return;
     }
 
+    console.log('🔍 Применяем фильтры:', filters);
     let filtered = [...trains];
 
     // 1. Фильтр по типу вагона
     if (filters.wagonType !== 'all') {
       const selectedApiTypes = wagonTypes.find(t => t.id === filters.wagonType)?.apiTypes || [];
+      console.log('🎯 Фильтруем по API типам:', selectedApiTypes);
       
       filtered = filtered.filter(train => {
         if (!train.wagons?.length) return false;
         
-        return train.wagons.some(wagon => {
+        const hasMatchingWagon = train.wagons.some(wagon => {
           const apiType = getWagonApiType(wagon);
+          console.log(`  Вагон: type=${wagon.type}, apiType=${wagon.apiType}, определен как: ${apiType}`);
           return apiType && selectedApiTypes.includes(apiType);
         });
+        
+        return hasMatchingWagon;
       });
+      
+      console.log(`📊 После фильтрации по типу вагона: ${filtered.length} поездов`);
     }
 
     // 2. Фильтр по ценовому диапазону
@@ -255,6 +281,7 @@ function SearchPage() {
       }
     });
 
+    console.log(`📊 Итоговый результат: ${filtered.length} поездов`);
     setFilteredTrains(filtered);
   }, [trains, filters, sortBy, getMinPriceForWagonType, getWagonApiType]);
 
@@ -316,7 +343,6 @@ function SearchPage() {
               try {
                 return trainApi.formatRouteForUI(item);
               } catch (e) {
-                console.error('Ошибка форматирования маршрута:', e);
                 return null;
               }
             })
@@ -332,6 +358,11 @@ function SearchPage() {
           }
         }
 
+        console.log('🚂 Загружены поезда:', formattedTrains.length);
+        formattedTrains.forEach(train => {
+          console.log(`  Поезд ${train.number}:`, train.wagons?.map(w => `${w.name}(${w.type}/${w.apiType})`));
+        });
+        
         setTrains(formattedTrains);
       } catch (err) {
         console.error('Критическая ошибка:', err);
@@ -352,10 +383,11 @@ function SearchPage() {
   }, [searchParams]);
 
   const handleFilterChange = (filterName, value) => {
-    setFilters(prev => {
-      const newFilters = { ...prev, [filterName]: value };
-      return newFilters;
-    });
+    console.log(`🔄 Изменен фильтр ${filterName}:`, value);
+    setFilters(prev => ({
+      ...prev,
+      [filterName]: value
+    }));
   };
 
   const handleSortChange = (e) => {
@@ -363,8 +395,6 @@ function SearchPage() {
   };
 
   const handleResetFilters = () => {
-    sessionStorage.setItem('filtersWereReset', 'true');
-    
     const defaultFilters = {
       priceRange: 'all',
       wagonType: 'all',
@@ -377,20 +407,17 @@ function SearchPage() {
     setFilters(defaultFilters);
     setSortBy('departureTime');
     
-    localStorage.removeItem('searchFilters');
-    localStorage.removeItem('searchSortBy');
+    localStorage.removeItem(STORAGE_KEYS.FILTERS);
+    localStorage.removeItem(STORAGE_KEYS.SORT);
   };
 
   const handleTrainSelect = (train) => {
     const trainWithMeta = { 
       ...train, 
-      originalData: train,
-      selectedWagonType: filters.wagonType
+      originalData: train
     };
     
     setSelectedTrain(trainWithMeta);
-    localStorage.setItem('selectedTrain', JSON.stringify(trainWithMeta));
-    
     navigate('/seats');
   };
 
