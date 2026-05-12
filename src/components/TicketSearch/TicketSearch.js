@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTicket } from '../../context/TicketContext';
 import './TicketSearch.css';
@@ -23,8 +23,8 @@ function TicketSearch() {
   const [errors, setErrors] = useState({});
   const [isOneWay, setIsOneWay] = useState(true);
 
-  // Установка дат по умолчанию
-  React.useEffect(() => {
+  // Установка дат по умолчанию и восстановление типа вагона
+  useEffect(() => {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -34,6 +34,35 @@ function TicketSearch() {
       departureDate: today.toISOString().split('T')[0],
       returnDate: tomorrow.toISOString().split('T')[0]
     }));
+
+    // Восстанавливаем сохраненный тип вагона из localStorage при загрузке
+    const savedWagonType = localStorage.getItem('selectedWagonType');
+    if (savedWagonType && savedWagonType !== 'all') {
+      console.log('🔄 Восстановлен тип вагона в TicketSearch:', savedWagonType);
+      
+      // Маппинг API типов на UI типы
+      const apiToUiMap = {
+        'first': 'lux',
+        'second': 'coupe',
+        'third': 'platzkart',
+        'fourth': 'sitting',
+        'lux': 'lux',
+        'coupe': 'coupe',
+        'platzkart': 'platzkart',
+        'sitting': 'sitting',
+        'any': 'any',
+        'all': 'any'
+      };
+      
+      const uiType = apiToUiMap[savedWagonType] || 'any';
+      
+      setFormData(prev => ({
+        ...prev,
+        ticketType: uiType
+      }));
+      
+      console.log('✅ Установлен тип вагона:', uiType);
+    }
   }, []);
 
   const handleChange = (e) => {
@@ -53,6 +82,22 @@ function TicketSearch() {
         ...prev,
         [name]: value
       }));
+      
+      // Если изменился тип вагона, сохраняем его в localStorage
+      if (name === 'ticketType') {
+        // Маппинг UI типов на API типы
+        const uiToApiMap = {
+          'any': 'all',
+          'sitting': 'fourth',
+          'platzkart': 'third',
+          'coupe': 'second',
+          'lux': 'first'
+        };
+        
+        const apiType = uiToApiMap[value] || 'all';
+        localStorage.setItem('selectedWagonType', apiType);
+        console.log('💾 Сохранен тип вагона при изменении:', apiType);
+      }
     }
     
     if (errors[name]) {
@@ -116,14 +161,36 @@ function TicketSearch() {
     const validationErrors = validate();
     
     if (Object.keys(validationErrors).length === 0) {
+      // Маппинг UI типов на API типы
+      const uiToApiMap = {
+        'any': 'all',
+        'sitting': 'fourth',
+        'platzkart': 'third',
+        'coupe': 'second',
+        'lux': 'first'
+      };
+      
+      const selectedApiType = uiToApiMap[formData.ticketType] || 'all';
+      
+      // Сохраняем тип вагона в localStorage перед переходом
+      localStorage.setItem('selectedWagonType', selectedApiType);
+      console.log('💾 Сохранен тип вагона перед отправкой:', selectedApiType);
+      
       const searchData = {
         ...formData,
         isOneWay,
-        totalPassengers: formData.passengers.adults + formData.passengers.children
+        totalPassengers: formData.passengers.adults + formData.passengers.children,
+        selectedWagonType: selectedApiType
       };
       
       updateSearchParams(searchData);
-      navigate('/search');
+      
+      // Передаем тип вагона через location state
+      navigate('/search', {
+        state: {
+          selectedWagonType: selectedApiType
+        }
+      });
     } else {
       setErrors(validationErrors);
     }

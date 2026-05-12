@@ -15,7 +15,12 @@ import svg3 from '../../assets/svg/Subtract-3.svg';
 
 function MainPage() {
   const navigate = useNavigate();
-  const { setSelectedTrain, setSelectedWagon, setSelectedSeats } = useTicket();
+  const { 
+    setSelectedTrain, 
+    setSelectedWagon, 
+    setSelectedSeats, 
+    updateSearchParams 
+  } = useTicket();
   const [lastTickets, setLastTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -248,6 +253,11 @@ function MainPage() {
           // Сбрасываем выбранные места
           setSelectedSeats([]);
           
+          // Сохраняем тип вагона
+          if (ticketData.wagonType && ticketData.wagonType !== 'all') {
+            localStorage.setItem('selectedWagonType', ticketData.wagonType);
+          }
+          
           // Переходим на страницу выбора мест
           navigate('/seats');
         } else {
@@ -306,53 +316,13 @@ function MainPage() {
     setSelectedWagon(trainFromTicket.wagons[0]);
     setSelectedSeats([]);
     
+    // Сохраняем тип вагона
+    if (ticketData.wagonType && ticketData.wagonType !== 'all') {
+      localStorage.setItem('selectedWagonType', ticketData.wagonType);
+    }
+    
     // Переходим на страницу выбора мест
     navigate('/seats');
-  };
-
-  // Обработка поиска билетов
-  const handleSearch = async (searchParams) => {
-    try {
-      // Проверяем наличие обязательных параметров
-      if (!searchParams.fromCity?.id || !searchParams.toCity?.id) {
-        console.error('Не указаны города отправления и прибытия');
-        return;
-      }
-
-      // Преобразуем параметры поиска для API
-      const apiParams = {
-        from_city_id: searchParams.fromCity.id,
-        to_city_id: searchParams.toCity.id,
-        date_start: searchParams.departureDate,
-        date_end: searchParams.arrivalDate || searchParams.departureDate,
-        have_first_class: searchParams.filters?.wagonTypes?.includes('first') || false,
-        have_second_class: searchParams.filters?.wagonTypes?.includes('second') || false,
-        have_third_class: searchParams.filters?.wagonTypes?.includes('third') || false,
-        have_fourth_class: searchParams.filters?.wagonTypes?.includes('fourth') || false,
-        have_wifi: searchParams.filters?.amenities?.includes('wifi') || false,
-        have_air_conditioning: searchParams.filters?.amenities?.includes('conditioner') || false,
-        have_express: searchParams.filters?.amenities?.includes('express') || false,
-        price_from: searchParams.priceFrom || 0,
-        price_to: searchParams.priceTo || 100000,
-        limit: 20,
-        offset: 0,
-        sort: searchParams.sortBy || 'date'
-      };
-
-      // Выполняем поиск
-      const response = await trainApi.searchRoutes(apiParams);
-      
-      // Переходим на страницу результатов
-      navigate('/search/results', { 
-        state: { 
-          searchResults: response.items || [],
-          searchParams: searchParams
-        } 
-      });
-    } catch (error) {
-      console.error('Search error:', error);
-      // Можно добавить обработку ошибок (например, показать уведомление)
-    }
   };
 
   return (
@@ -365,7 +335,7 @@ function MainPage() {
           <p className="hero__subtitle">
             Найдите и забронируйте железнодорожные билеты онлайн
           </p>
-          <TicketSearch onSearch={handleSearch} />
+          <TicketSearch />
         </div>
       </section>
 

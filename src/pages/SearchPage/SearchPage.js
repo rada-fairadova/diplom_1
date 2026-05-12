@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTicket } from '../../context/TicketContext';
 import { trainApi } from '../../services/api';
 import OrderSteps from '../../components/OrderSteps/OrderSteps';
@@ -35,11 +35,15 @@ const timeRanges = [
 
 function SearchPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { searchParams, setSelectedTrain } = useTicket();
+
   const [trains, setTrains] = useState([]);
   const [filteredTrains, setFilteredTrains] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Инициализация фильтров
   const [filters, setFilters] = useState({
     priceRange: 'all',
     wagonType: 'all',
@@ -48,23 +52,76 @@ function SearchPage() {
     hasConditioner: false,
     hasLinens: false
   });
+  
   const [sortBy, setSortBy] = useState('departureTime');
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Загружаем сохраненные фильтры при первом рендере
+  useEffect(() => {
+    // Проверяем sessionStorage на флаг сброса
+    const wasReset = sessionStorage.getItem('filtersWereReset');
+    if (wasReset === 'true') {
+      sessionStorage.removeItem('filtersWereReset');
+      setIsInitialized(true);
+      return;
+    }
+    
+    // Пытаемся загрузить из localStorage
+    try {
+      const savedFilters = localStorage.getItem('searchFilters');
+      
+      if (savedFilters) {
+        const parsed = JSON.parse(savedFilters);
+        
+        setFilters(prev => ({
+          ...prev,
+          ...parsed
+        }));
+      }
+    } catch (e) {
+      console.error('Ошибка загрузки фильтров:', e);
+    }
+    
+    // Загружаем сортировку
+    const savedSort = localStorage.getItem('searchSortBy');
+    if (savedSort) {
+      setSortBy(savedSort);
+    }
+    
+    setIsInitialized(true);
+  }, []);
+
+  // Сохраняем фильтры при изменении (после инициализации)
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    try {
+      const filtersJSON = JSON.stringify(filters);
+      localStorage.setItem('searchFilters', filtersJSON);
+    } catch (e) {
+      console.error('Ошибка сохранения фильтров:', e);
+    }
+  }, [filters, isInitialized]);
+
+  // Сохраняем сортировку
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    localStorage.setItem('searchSortBy', sortBy);
+  }, [sortBy, isInitialized]);
 
   // Вспомогательная функция для получения API-типа вагона
   const getWagonApiType = useCallback((wagon) => {
     if (!wagon) return null;
     
-    // 1. Проверяем apiType
     if (wagon.apiType && ['first', 'second', 'third', 'fourth'].includes(wagon.apiType)) {
       return wagon.apiType;
     }
     
-    // 2. Проверяем type на прямые значения API
     if (wagon.type && ['first', 'second', 'third', 'fourth'].includes(wagon.type)) {
       return wagon.type;
     }
     
-    // 3. Обратный маппинг из UI-типов
     const reverseMap = {
       'lux': 'first',
       'coupe': 'second',
@@ -89,7 +146,6 @@ function SearchPage() {
 
     let relevantWagons = train.wagons;
 
-    // Если выбран конкретный тип вагона, фильтруем только по нему
     if (selectedWagonType && selectedWagonType !== 'all') {
       const selectedApiTypes = wagonTypes.find(t => t.id === selectedWagonType)?.apiTypes || [];
       
@@ -212,7 +268,6 @@ function SearchPage() {
         let fromCityId = null;
         let toCityId = null;
 
-        // Поиск ID городов
         if (searchParams?.from) {
           try {
             const fromCities = await trainApi.searchCities(searchParams.from);
@@ -235,7 +290,6 @@ function SearchPage() {
           }
         }
 
-        // Fallback ID
         if (!fromCityId) fromCityId = '1';
         if (!toCityId) toCityId = '2';
 
@@ -260,8 +314,7 @@ function SearchPage() {
           formattedTrains = response.items
             .map((item) => {
               try {
-                const formatted = trainApi.formatRouteForUI(item);
-                return formatted;
+                return trainApi.formatRouteForUI(item);
               } catch (e) {
                 console.error('Ошибка форматирования маршрута:', e);
                 return null;
@@ -270,7 +323,6 @@ function SearchPage() {
             .filter(train => train !== null);
         }
 
-        // Резервные данные если ничего не загрузилось
         if (formattedTrains.length === 0) {
           const mockResponse = trainApi.getMockRoutesResponse();
           if (mockResponse && mockResponse.items) {
@@ -285,7 +337,6 @@ function SearchPage() {
         console.error('Критическая ошибка:', err);
         setError('Произошла ошибка при загрузке');
         
-        // Используем моковые данные при ошибке
         const mockResponse = trainApi.getMockRoutesResponse();
         const mockTrains = mockResponse.items
           .map(item => trainApi.formatRouteForUI(item))
@@ -301,7 +352,10 @@ function SearchPage() {
   }, [searchParams]);
 
   const handleFilterChange = (filterName, value) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
+    setFilters(prev => {
+      const newFilters = { ...prev, [filterName]: value };
+      return newFilters;
+    });
   };
 
   const handleSortChange = (e) => {
@@ -309,18 +363,34 @@ function SearchPage() {
   };
 
   const handleResetFilters = () => {
-    setFilters({
+    sessionStorage.setItem('filtersWereReset', 'true');
+    
+    const defaultFilters = {
       priceRange: 'all',
       wagonType: 'all',
       departureTime: 'any',
       hasWifi: false,
       hasConditioner: false,
       hasLinens: false
-    });
+    };
+    
+    setFilters(defaultFilters);
+    setSortBy('departureTime');
+    
+    localStorage.removeItem('searchFilters');
+    localStorage.removeItem('searchSortBy');
   };
 
   const handleTrainSelect = (train) => {
-    setSelectedTrain({ ...train, originalData: train });
+    const trainWithMeta = { 
+      ...train, 
+      originalData: train,
+      selectedWagonType: filters.wagonType
+    };
+    
+    setSelectedTrain(trainWithMeta);
+    localStorage.setItem('selectedTrain', JSON.stringify(trainWithMeta));
+    
     navigate('/seats');
   };
 

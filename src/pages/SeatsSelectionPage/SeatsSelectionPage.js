@@ -47,7 +47,11 @@ const wagonTypesConfig = [
 function SeatsSelectionPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedTrain, setSelectedWagon: setSelectedWagonContext, setSelectedSeats: setSelectedSeatsContext } = useTicket();
+  const { 
+    selectedTrain, 
+    setSelectedWagon: setSelectedWagonContext, 
+    setSelectedSeats: setSelectedSeatsContext 
+  } = useTicket();
   
   // Локальное состояние
   const [selectedWagon, setSelectedWagonLocal] = useState(null);
@@ -73,7 +77,6 @@ function SeatsSelectionPage() {
     const occupiedCount = totalSeats - availableSeats;
     const occupiedSeats = [];
     
-    // Генерируем случайные занятые места
     for (let i = 0; i < occupiedCount; i++) {
       let seat;
       do {
@@ -85,7 +88,7 @@ function SeatsSelectionPage() {
     return occupiedSeats;
   }, []);
 
-  // Обработчик выбора вагона (ИСПРАВЛЕНО: стабильная функция)
+  // Обработчик выбора вагона
   const handleWagonSelect = useCallback((wagon) => {
     console.log('Выбран вагон:', wagon);
     setSelectedWagonLocal(wagon);
@@ -94,7 +97,6 @@ function SeatsSelectionPage() {
 
   // Обработчик выбора места
   const handleSeatSelect = useCallback((seatNumber) => {
-    // Проверяем, доступно ли место
     const seat = seatMap.find(s => s.number === seatNumber);
     if (!seat || !seat.available) {
       alert('Это место уже занято или недоступно');
@@ -103,10 +105,8 @@ function SeatsSelectionPage() {
 
     setSelectedSeatsLocal(prev => {
       if (prev.includes(seatNumber)) {
-        // Убираем место из выбранных
         return prev.filter(s => s !== seatNumber);
       } else {
-        // Добавляем место в выбранные
         if (prev.length < 4) {
           return [...prev, seatNumber];
         } else {
@@ -117,17 +117,15 @@ function SeatsSelectionPage() {
     });
   }, [seatMap]);
 
-  // Загрузка данных о вагонах (ИСПРАВЛЕНО: убрана лишняя зависимость)
+  // Загрузка данных о вагонах
   useEffect(() => {
     const fetchSeatsData = async () => {
-      // ИСПРАВЛЕНО: Проверяем наличие selectedTrain
       if (!selectedTrain) {
         console.warn('Нет выбранного поезда, перенаправляем на поиск');
         navigate('/search');
         return;
       }
 
-      // ИСПРАВЛЕНО: Извлекаем данные правильно, учитывая структуру
       const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
 
       if (!trainData || !trainData.number) {
@@ -142,19 +140,16 @@ function SeatsSelectionPage() {
 
         console.log('Загружаем места для поезда:', trainData);
 
-        // Используем вагоны из выбранного поезда
         if (trainData.wagons && trainData.wagons.length > 0) {
-          // ИСПРАВЛЕНО: Преобразуем вагоны правильно
           const wagons = trainData.wagons.map((wagon, index) => {
-            // Ищем конфигурацию вагона по типу
             const wagonTypeConfig = wagonTypesConfig.find(w => 
               w.type === (wagon.type || wagon.apiType)
             ) || wagonTypesConfig.find(w => 
               w.type === (wagon.apiType || wagon.type)
-            ) || wagonTypesConfig[1]; // По умолчанию купе
+            ) || wagonTypesConfig[1];
 
             return {
-              ...wagonTypeConfig, // Берем полную конфигурацию
+              ...wagonTypeConfig,
               id: wagon.id || `wagon-${wagon.type}-${index}`,
               number: wagon.number || (index + 1),
               type: wagon.type || wagon.apiType,
@@ -171,7 +166,6 @@ function SeatsSelectionPage() {
           console.log('Сформированные вагоны:', wagons);
           setAvailableWagons(wagons);
         } else {
-          // Если нет вагонов в поезде, используем моковые данные
           console.warn('У поезда нет вагонов, используем моковые');
           const mockWagons = getMockWagons();
           setAvailableWagons(mockWagons);
@@ -179,7 +173,6 @@ function SeatsSelectionPage() {
       } catch (err) {
         console.error('Ошибка при загрузке мест:', err);
         setError('Не удалось загрузить информацию о местах');
-        // Используем моковые данные в качестве резервного варианта
         const mockWagons = getMockWagons();
         setAvailableWagons(mockWagons);
       } finally {
@@ -188,9 +181,9 @@ function SeatsSelectionPage() {
     };
 
     fetchSeatsData();
-  }, [selectedTrain, navigate, getDefaultPrice]); // ИСПРАВЛЕНО: убран handleWagonSelect из зависимостей
+  }, [selectedTrain, navigate, getDefaultPrice]);
 
-  // ИСПРАВЛЕНО: Отдельный эффект для выбора первого вагона по умолчанию
+  // Выбор первого вагона по умолчанию
   useEffect(() => {
     if (availableWagons.length > 0 && !selectedWagon) {
       handleWagonSelect(availableWagons[0]);
@@ -201,7 +194,6 @@ function SeatsSelectionPage() {
   useEffect(() => {
     if (!selectedWagon) return;
 
-    // Генерируем карту мест для выбранного вагона
     const generateSeatMap = () => {
       const seats = [];
       const occupiedSeats = generateOccupiedSeats(selectedWagon.totalSeats, selectedWagon.availableSeats);
@@ -220,7 +212,7 @@ function SeatsSelectionPage() {
 
     const newSeatMap = generateSeatMap();
     setSeatMap(newSeatMap);
-    setSelectedSeatsLocal([]); // Сбрасываем выбранные места при смене вагона
+    setSelectedSeatsLocal([]);
     
     console.log(`Сгенерирована карта мест для вагона ${selectedWagon.type}:`, newSeatMap.length, 'мест');
   }, [selectedWagon, generateOccupiedSeats]);
@@ -231,26 +223,69 @@ function SeatsSelectionPage() {
     return selectedSeats.length * selectedWagon.price;
   }, [selectedWagon, selectedSeats]);
 
-  // Обработчик продолжения
+  // Обработчик продолжения - передача данных в API
   const handleContinue = useCallback(() => {
     if (selectedSeats.length === 0) {
       alert('Пожалуйста, выберите хотя бы одно место');
       return;
     }
     
-    // Сохраняем выбранный вагон и места в контекст
-    setSelectedWagonContext(selectedWagon);
+    // Формируем данные для API
+    const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
+    
+    const bookingData = {
+      train: {
+        id: trainData.id || selectedTrain.id,
+        number: trainData.number,
+        name: `${trainData.fromCity} → ${trainData.toCity}`,
+        fromCity: trainData.fromCity,
+        toCity: trainData.toCity,
+        fromStation: trainData.fromStation,
+        toStation: trainData.toStation,
+        departureTime: trainData.departureTime,
+        arrivalTime: trainData.arrivalTime,
+        departureDate: trainData.departureDate,
+        arrivalDate: trainData.arrivalDate
+      },
+      wagon: {
+        id: selectedWagon.id,
+        type: selectedWagon.type,
+        name: selectedWagon.name,
+        number: selectedWagon.number,
+        price: selectedWagon.price
+      },
+      seats: selectedSeats.map(seatNumber => ({
+        number: seatNumber,
+        price: selectedWagon.price
+      })),
+      totalPrice: calculateTotalPrice()
+    };
+    
+    console.log('📦 Данные для API (бронирование):', bookingData);
+    
+    // Сохраняем в контекст
+    setSelectedWagonContext({
+      ...selectedWagon,
+      bookingData: bookingData
+    });
     setSelectedSeatsContext(selectedSeats);
     
-    console.log('Сохранены данные:', {
-      wagon: selectedWagon,
-      seats: selectedSeats,
-      total: calculateTotalPrice()
-    });
+    // Сохраняем в localStorage для восстановления
+    localStorage.setItem('bookingData', JSON.stringify(bookingData));
+    localStorage.setItem('selectedWagon', JSON.stringify(selectedWagon));
+    localStorage.setItem('selectedSeats', JSON.stringify(selectedSeats));
     
     // Переходим на страницу пассажиров
     navigate('/passengers');
-  }, [selectedWagon, selectedSeats, calculateTotalPrice, setSelectedWagonContext, setSelectedSeatsContext, navigate]);
+  }, [
+    selectedWagon, 
+    selectedSeats, 
+    calculateTotalPrice, 
+    setSelectedWagonContext, 
+    setSelectedSeatsContext, 
+    navigate, 
+    selectedTrain
+  ]);
 
   // Форматирование цены
   const formatPrice = useCallback((price) => {
@@ -384,7 +419,7 @@ function SeatsSelectionPage() {
     );
   }
 
-  // ИСПРАВЛЕНО: Извлекаем данные поезда для отображения
+  // Извлекаем данные поезда для отображения
   const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
 
   return (
@@ -415,7 +450,7 @@ function SeatsSelectionPage() {
 
       <div className="seats-selection-container">
         <main className="seats-selection-main">
-          {/* Информация о поезде (ИСПРАВЛЕНО: используем trainData) */}
+          {/* Информация о поезде */}
           <div className="trip-summary">
             <h1 className="trip-summary__title">Выбор мест в вагоне</h1>
             <div className="trip-summary__info">
@@ -648,7 +683,6 @@ function SeatsSelectionPage() {
 
         {/* Боковая панель */}
         <aside className="seats-selection-sidebar">
-          {/* Статистика */}
           <div className="sidebar-card stats-card">
             <h3>Статистика выбора</h3>
             <div className="stats-content">
@@ -682,7 +716,6 @@ function SeatsSelectionPage() {
             </div>
           </div>
 
-          {/* Подсказки */}
           <div className="sidebar-card tips-card">
             <h3>Полезные советы</h3>
             <ul className="tips-list">

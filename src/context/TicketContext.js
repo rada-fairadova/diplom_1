@@ -12,27 +12,74 @@ export const useTicket = () => {
 
 export const TicketProvider = ({ children }) => {
   // Состояние поиска с восстановлением из localStorage
-  const [searchParams, setSearchParams] = useState({
-    from: '',
-    to: '',
-    departureDate: '',
-    passengers: {
-      adults: 1,
-      children: 0,
-      infants: 0
+  const [searchParams, setSearchParams] = useState(() => {
+    const saved = localStorage.getItem('ticketSearchParams');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        console.log('🔄 Восстановлены параметры поиска из localStorage:', parsed);
+        return parsed;
+      } catch (e) {
+        console.error('Ошибка парсинга сохраненных параметров поиска');
+      }
     }
+    return {
+      from: '',
+      to: '',
+      departureDate: '',
+      passengers: {
+        adults: 1,
+        children: 0,
+        infants: 0
+      }
+    };
   });
 
-  // Состояние билета
-  const [selectedTrain, setSelectedTrain] = useState(null);
-  const [selectedWagon, setSelectedWagon] = useState(null);
-  const [selectedSeats, setSelectedSeats] = useState([]);
+  // Состояние билета с восстановлением из localStorage
+  const [selectedTrain, setSelectedTrain] = useState(() => {
+    const saved = localStorage.getItem('selectedTrain');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        console.log('🔄 Восстановлен выбранный поезд из localStorage');
+        return parsed;
+      } catch (e) {
+        console.error('Ошибка парсинга сохраненного поезда');
+      }
+    }
+    return null;
+  });
+
+  const [selectedWagon, setSelectedWagon] = useState(() => {
+    const saved = localStorage.getItem('selectedWagon');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        console.log('🔄 Восстановлен выбранный вагон из localStorage');
+        return parsed;
+      } catch (e) {
+        console.error('Ошибка парсинга сохраненного вагона');
+      }
+    }
+    return null;
+  });
+
+  const [selectedSeats, setSelectedSeats] = useState(() => {
+    const saved = localStorage.getItem('selectedSeats');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        console.log('🔄 Восстановлены выбранные места из localStorage');
+        return parsed;
+      } catch (e) {
+        console.error('Ошибка парсинга сохраненных мест');
+      }
+    }
+    return [];
+  });
+
   const [passengers, setPassengers] = useState([]);
-  
-  // Состояние заказа
   const [orderDetails, setOrderDetails] = useState(null);
-  
-  // Данные карты для оплаты
   const [cardData, setCardData] = useState({
     number: '',
     expiry: '',
@@ -40,37 +87,44 @@ export const TicketProvider = ({ children }) => {
     holder: ''
   });
 
-  // Восстановление параметров поиска из localStorage при загрузке
-  useEffect(() => {
-    const savedParams = localStorage.getItem('searchParams');
-    if (savedParams) {
-      try {
-        const parsed = JSON.parse(savedParams);
-        setSearchParams(prev => ({
-          ...prev,
-          ...parsed
-        }));
-        console.log('Восстановлены параметры поиска:', parsed);
-      } catch (e) {
-        console.error('Ошибка восстановления параметров поиска', e);
-      }
-    }
-  }, []);
-
-  // Сохранение параметров поиска в localStorage
+  // Сохранение параметров поиска
   useEffect(() => {
     if (searchParams.from || searchParams.to) {
-      localStorage.setItem('searchParams', JSON.stringify(searchParams));
-      console.log('Сохранены параметры поиска:', searchParams);
+      localStorage.setItem('ticketSearchParams', JSON.stringify(searchParams));
+      console.log('💾 Сохранены параметры поиска:', searchParams);
     }
   }, [searchParams]);
 
+  // Сохранение выбранного поезда
+  useEffect(() => {
+    if (selectedTrain) {
+      localStorage.setItem('selectedTrain', JSON.stringify(selectedTrain));
+      console.log('💾 Сохранен выбранный поезд');
+    }
+  }, [selectedTrain]);
+
+  // Сохранение выбранного вагона
+  useEffect(() => {
+    if (selectedWagon) {
+      localStorage.setItem('selectedWagon', JSON.stringify(selectedWagon));
+      console.log('💾 Сохранен выбранный вагон');
+    }
+  }, [selectedWagon]);
+
+  // Сохранение выбранных мест
+  useEffect(() => {
+    if (selectedSeats && selectedSeats.length > 0) {
+      localStorage.setItem('selectedSeats', JSON.stringify(selectedSeats));
+      console.log('💾 Сохранены выбранные места:', selectedSeats);
+    }
+  }, [selectedSeats]);
+
   // Функция для обновления параметров поиска
   const updateSearchParams = useCallback((newParams) => {
-    setSearchParams(prev => ({
-      ...prev,
-      ...newParams
-    }));
+    setSearchParams(prev => {
+      const updated = { ...prev, ...newParams };
+      return updated;
+    });
   }, []);
 
   const addPassenger = useCallback((passenger) => {
@@ -89,7 +143,6 @@ export const TicketProvider = ({ children }) => {
     setPassengers(prev => prev.filter((_, i) => i !== index));
   }, []);
 
-  // Функция для создания заказа
   const setOrder = useCallback((order) => {
     setOrderDetails(order);
   }, []);
@@ -116,7 +169,15 @@ export const TicketProvider = ({ children }) => {
       cvv: '',
       holder: ''
     });
-    // Не сбрасываем searchParams, чтобы сохранить историю поиска
+    
+    // Очищаем localStorage
+    localStorage.removeItem('selectedTrain');
+    localStorage.removeItem('selectedWagon');
+    localStorage.removeItem('selectedSeats');
+    localStorage.removeItem('selectedWagonType');
+    localStorage.removeItem('bookingData');
+    
+    console.log('🔄 Все данные билета сброшены');
   }, []);
 
   const value = {
