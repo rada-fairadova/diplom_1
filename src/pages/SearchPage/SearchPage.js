@@ -94,7 +94,7 @@ function SearchPage() {
         }
       }
     } catch (e) {
-      // Если ошибка - используем значения по умолчанию
+      console.error('Ошибка загрузки фильтров:', e);
     }
     
     return defaultFilters;
@@ -113,14 +113,14 @@ function SearchPage() {
   // Сохраняем фильтры в localStorage при каждом изменении
   useEffect(() => {
     try {
-      // Конвертируем UI тип в API тип для сохранения
       const filtersToSave = {
         ...filters,
         wagonType: uiToApiMap[filters.wagonType] || 'all'
       };
       localStorage.setItem(STORAGE_KEYS.FILTERS, JSON.stringify(filtersToSave));
+      console.log('💾 Фильтры сохранены:', filtersToSave);
     } catch (e) {
-      // Игнорируем ошибки сохранения
+      console.error('Ошибка сохранения фильтров:', e);
     }
   }, [filters]);
 
@@ -128,8 +128,9 @@ function SearchPage() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.SORT, sortBy);
+      console.log('💾 Сортировка сохранена:', sortBy);
     } catch (e) {
-      // Игнорируем ошибки сохранения
+      console.error('Ошибка сохранения сортировки:', e);
     }
   }, [sortBy]);
 
@@ -137,17 +138,14 @@ function SearchPage() {
   const getWagonApiType = useCallback((wagon) => {
     if (!wagon) return null;
     
-    // Проверяем apiType
     if (wagon.apiType && ['first', 'second', 'third', 'fourth'].includes(wagon.apiType)) {
       return wagon.apiType;
     }
     
-    // Проверяем type
     if (wagon.type && ['first', 'second', 'third', 'fourth'].includes(wagon.type)) {
       return wagon.type;
     }
     
-    // Проверяем UI типы
     if (wagon.type && uiToApiMap[wagon.type]) {
       return uiToApiMap[wagon.type];
     }
@@ -190,7 +188,27 @@ function SearchPage() {
       return;
     }
 
-    console.log('🔍 Применяем фильтры:', filters);
+    console.log('🔍 Начинаем фильтрацию. Всего поездов:', trains.length);
+    console.log('📊 Текущие фильтры:', filters);
+    console.log('📊 Текущая сортировка:', sortBy);
+    
+    // Логируем информацию о каждом поезде
+    trains.forEach((train, index) => {
+      console.log(`Поезд ${index + 1} (${train.number}):`, {
+        id: train.id,
+        fromCity: train.fromCity,
+        toCity: train.toCity,
+        wagons: train.wagons?.map(w => ({
+          type: w.type,
+          apiType: w.apiType,
+          price: w.price
+        })),
+        hasWifi: train.hasWifi,
+        hasConditioner: train.hasConditioner,
+        hasLinens: train.hasLinens
+      });
+    });
+
     let filtered = [...trains];
 
     // 1. Фильтр по типу вагона
@@ -199,14 +217,19 @@ function SearchPage() {
       console.log('🎯 Фильтруем по API типам:', selectedApiTypes);
       
       filtered = filtered.filter(train => {
-        if (!train.wagons?.length) return false;
+        if (!train.wagons?.length) {
+          console.log(`  ❌ Поезд ${train.number}: нет вагонов`);
+          return false;
+        }
         
         const hasMatchingWagon = train.wagons.some(wagon => {
           const apiType = getWagonApiType(wagon);
-          console.log(`  Вагон: type=${wagon.type}, apiType=${wagon.apiType}, определен как: ${apiType}`);
-          return apiType && selectedApiTypes.includes(apiType);
+          const matches = apiType && selectedApiTypes.includes(apiType);
+          console.log(`  🔍 Вагон ${wagon.type}/${wagon.apiType}: apiType=${apiType}, подходит=${matches}`);
+          return matches;
         });
         
+        console.log(`  ${hasMatchingWagon ? '✅' : '❌'} Поезд ${train.number}: ${hasMatchingWagon ? 'проходит' : 'не проходит'} фильтр`);
         return hasMatchingWagon;
       });
       
@@ -218,10 +241,16 @@ function SearchPage() {
       const priceRange = priceRanges.find(range => range.id === filters.priceRange);
       
       if (priceRange) {
+        console.log('💰 Фильтруем по цене:', priceRange);
+        
         filtered = filtered.filter(train => {
           const minPrice = getMinPriceForWagonType(train, 'all');
-          return isFinite(minPrice) && minPrice >= priceRange.min && minPrice <= priceRange.max;
+          const inRange = isFinite(minPrice) && minPrice >= priceRange.min && minPrice <= priceRange.max;
+          console.log(`  ${inRange ? '✅' : '❌'} Поезд ${train.number}: мин.цена=${minPrice}, в диапазоне=${inRange}`);
+          return inRange;
         });
+        
+        console.log(`📊 После фильтрации по цене: ${filtered.length} поездов`);
       }
     }
 
@@ -240,24 +269,30 @@ function SearchPage() {
             case 'night': return hour >= 23 || hour < 5;
             default: return true;
           }
-        } catch {
+        } catch (error) {
+          console.error('Ошибка фильтрации по времени:', error);
           return false;
         }
       });
+      console.log(`📊 После фильтрации по времени: ${filtered.length} поездов`);
     }
 
     // 4. Фильтры по услугам
     if (filters.hasWifi) {
       filtered = filtered.filter(train => train.hasWifi === true);
+      console.log(`📊 После фильтрации Wi-Fi: ${filtered.length} поездов`);
     }
     if (filters.hasConditioner) {
       filtered = filtered.filter(train => train.hasConditioner === true);
+      console.log(`📊 После фильтрации кондиционера: ${filtered.length} поездов`);
     }
     if (filters.hasLinens) {
       filtered = filtered.filter(train => train.hasLinens === true);
+      console.log(`📊 После фильтрации белья: ${filtered.length} поездов`);
     }
 
     // 5. Сортировка
+    console.log('🔄 Применяем сортировку:', sortBy);
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'price-asc':
@@ -281,7 +316,15 @@ function SearchPage() {
       }
     });
 
-    console.log(`📊 Итоговый результат: ${filtered.length} поездов`);
+    console.log(`📊 ИТОГО после всех фильтров: ${filtered.length} поездов`);
+    if (filtered.length > 0) {
+      filtered.forEach((train, index) => {
+        console.log(`  ${index + 1}. ${train.number}: ${train.fromCity} → ${train.toCity} (${train.name})`);
+      });
+    } else {
+      console.log('  ❌ Нет поездов, соответствующих фильтрам');
+    }
+    
     setFilteredTrains(filtered);
   }, [trains, filters, sortBy, getMinPriceForWagonType, getWagonApiType]);
 
@@ -292,6 +335,9 @@ function SearchPage() {
         setLoading(true);
         setError(null);
 
+        console.log('🚂 Начинаем загрузку поездов...');
+        console.log('📋 Параметры поиска:', searchParams);
+
         let fromCityId = null;
         let toCityId = null;
 
@@ -300,6 +346,7 @@ function SearchPage() {
             const fromCities = await trainApi.searchCities(searchParams.from);
             if (fromCities && fromCities.length > 0) {
               fromCityId = fromCities[0]._id || fromCities[0].id;
+              console.log('📍 Город отправления:', searchParams.from, 'ID:', fromCityId);
             }
           } catch (e) {
             console.error('Ошибка поиска города отправления:', e);
@@ -311,12 +358,14 @@ function SearchPage() {
             const toCities = await trainApi.searchCities(searchParams.to);
             if (toCities && toCities.length > 0) {
               toCityId = toCities[0]._id || toCities[0].id;
+              console.log('📍 Город прибытия:', searchParams.to, 'ID:', toCityId);
             }
           } catch (e) {
             console.error('Ошибка поиска города прибытия:', e);
           }
         }
 
+        // Используем моковые ID если не найдены
         if (!fromCityId) fromCityId = '1';
         if (!toCityId) toCityId = '2';
 
@@ -334,45 +383,67 @@ function SearchPage() {
           sort: 'date'
         };
 
+        console.log('📤 Отправляем запрос с параметрами:', apiParams);
+        
         const response = await trainApi.searchRoutes(apiParams);
+        console.log('📥 Получен ответ:', response);
+
         let formattedTrains = [];
 
         if (response && response.items && Array.isArray(response.items)) {
+          console.log(`📊 В ответе ${response.items.length} маршрутов`);
           formattedTrains = response.items
-            .map((item) => {
+            .map((item, index) => {
               try {
-                return trainApi.formatRouteForUI(item);
+                const formatted = trainApi.formatRouteForUI(item);
+                console.log(`  ${index + 1}. ${formatted?.number || 'ОШИБКА'}:`, formatted);
+                return formatted;
               } catch (e) {
+                console.error(`Ошибка форматирования маршрута ${index}:`, e);
                 return null;
               }
             })
             .filter(train => train !== null);
         }
 
+        // Если нет результатов, используем моковые данные
         if (formattedTrains.length === 0) {
+          console.log('⚠️ Нет результатов от API, используем моковые данные');
           const mockResponse = trainApi.getMockRoutesResponse();
           if (mockResponse && mockResponse.items) {
             formattedTrains = mockResponse.items
-              .map(item => trainApi.formatRouteForUI(item))
+              .map((item, index) => {
+                const formatted = trainApi.formatRouteForUI(item);
+                console.log(`  Мок ${index + 1}. ${formatted?.number}:`, formatted);
+                return formatted;
+              })
               .filter(train => train !== null);
           }
         }
 
-        console.log('🚂 Загружены поезда:', formattedTrains.length);
-        formattedTrains.forEach(train => {
-          console.log(`  Поезд ${train.number}:`, train.wagons?.map(w => `${w.name}(${w.type}/${w.apiType})`));
+        console.log(`✅ Итого загружено ${formattedTrains.length} поездов`);
+        formattedTrains.forEach((train, index) => {
+          console.log(`  ${index + 1}. ${train.number}:`, {
+            id: train.id,
+            from: train.fromCity,
+            to: train.toCity,
+            wagons: train.wagons?.map(w => `${w.type}/${w.apiType}`)
+          });
         });
         
         setTrains(formattedTrains);
       } catch (err) {
-        console.error('Критическая ошибка:', err);
-        setError('Произошла ошибка при загрузке');
+        console.error('❌ Критическая ошибка загрузки:', err);
+        setError('Произошла ошибка при загрузке данных');
         
+        // Загружаем моковые данные при ошибке
+        console.log('🔄 Загружаем моковые данные из-за ошибки');
         const mockResponse = trainApi.getMockRoutesResponse();
         const mockTrains = mockResponse.items
           .map(item => trainApi.formatRouteForUI(item))
           .filter(train => train !== null);
         
+        console.log(`📊 Загружено ${mockTrains.length} моковых поездов`);
         setTrains(mockTrains);
       } finally {
         setLoading(false);
@@ -395,6 +466,7 @@ function SearchPage() {
   };
 
   const handleResetFilters = () => {
+    console.log('🔄 Сброс всех фильтров');
     const defaultFilters = {
       priceRange: 'all',
       wagonType: 'all',
@@ -412,16 +484,29 @@ function SearchPage() {
   };
 
   const handleTrainSelect = (train) => {
+    console.log('🚂 Выбран поезд для перехода:', {
+      id: train.id,
+      number: train.number,
+      from: train.fromCity,
+      to: train.toCity
+    });
+    
     const trainWithMeta = { 
       ...train, 
       originalData: train
     };
     
     setSelectedTrain(trainWithMeta);
-    navigate('/seats');
+    
+    // Небольшая задержка для гарантии сохранения состояния
+    setTimeout(() => {
+      navigate('/seats');
+    }, 100);
   };
 
   const handleLastTicketClick = (ticketData) => {
+    console.log('🎫 Клик по последнему билету:', ticketData);
+    
     const typeMap = {
       'first': { type: 'lux', name: 'Люкс' },
       'second': { type: 'coupe', name: 'Купе' },
@@ -459,8 +544,12 @@ function SearchPage() {
       hasLinens: true
     };
 
+    console.log('🎫 Создан поезд из билета:', trainFromTicket);
     setSelectedTrain(trainFromTicket);
-    navigate('/seats');
+    
+    setTimeout(() => {
+      navigate('/seats');
+    }, 100);
   };
 
   return (
@@ -616,9 +705,18 @@ function SearchPage() {
 
           {!loading && !error && filteredTrains.length > 0 && (
             <div className="trains-list">
-              {filteredTrains.map(train => (
-                <TrainCard key={train.id} train={train} onSelect={handleTrainSelect} />
-              ))}
+              {filteredTrains.map((train, index) => {
+                // Гарантируем уникальный ключ для каждого поезда
+                const key = train.id || `train-${index}-${train.number}-${Date.now()}`;
+                
+                return (
+                  <TrainCard 
+                    key={key} 
+                    train={train} 
+                    onSelect={handleTrainSelect} 
+                  />
+                );
+              })}
             </div>
           )}
         </div>

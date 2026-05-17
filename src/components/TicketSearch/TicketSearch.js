@@ -59,10 +59,12 @@ function TicketSearch() {
             ...prev,
             ticketType: uiType
           }));
+          
+          console.log('🔄 Восстановлен тип вагона:', uiType);
         }
       }
     } catch (e) {
-      // Игнорируем ошибки
+      console.error('Ошибка восстановления фильтров:', e);
     }
   }, []);
 
@@ -169,8 +171,9 @@ function TicketSearch() {
       
       try {
         localStorage.setItem('train_search_filters', JSON.stringify(filtersToSave));
+        console.log('💾 Сохранены фильтры:', filtersToSave);
       } catch (e) {
-        // Игнорируем ошибки сохранения
+        console.error('Ошибка сохранения фильтров:', e);
       }
       
       const searchData = {
@@ -179,11 +182,16 @@ function TicketSearch() {
         totalPassengers: formData.passengers.adults + formData.passengers.children
       };
       
+      console.log('🔍 Отправка поискового запроса:', searchData);
+      
       updateSearchParams(searchData);
       
-      // Переходим на страницу поиска
-      navigate('/search');
+      // Небольшая задержка для обновления контекста
+      setTimeout(() => {
+        navigate('/search');
+      }, 100);
     } else {
+      console.log('❌ Ошибки валидации:', validationErrors);
       setErrors(validationErrors);
     }
   };

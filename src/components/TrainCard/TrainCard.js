@@ -11,43 +11,73 @@ function TrainCard({ train, onSelect }) {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Выбран поезд:', train);
+    console.log('🚂 TrainCard: Выбран поезд:', {
+      id: train?.id,
+      number: train?.number,
+      name: train?.name,
+      from: train?.fromCity,
+      to: train?.toCity,
+      wagonsCount: train?.wagons?.length || 0
+    });
     
-    if (!train) {
-      console.error('Поезд не определен');
+    if (!train || !train.id) {
+      console.error('❌ TrainCard: Некорректные данные поезда:', train);
       return;
     }
     
-    setSelectedTrain(train);
-    
+    // Используем переданный обработчик, если он есть
     if (onSelect) {
       onSelect(train);
     } else {
+      // Иначе сохраняем в контекст и переходим
+      setSelectedTrain(train);
       navigate('/seats');
     }
   };
 
+  // Проверка на валидность данных
+  if (!train || !train.number) {
+    console.error('❌ TrainCard получил некорректные данные:', train);
+    return (
+      <div className="train-card train-card--error">
+        <p>Ошибка загрузки данных поезда</p>
+      </div>
+    );
+  }
+
   const formatTime = (dateString) => {
     if (!dateString) return '--:--';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('ru-RU', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '--:--';
+      return date.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    } catch (error) {
+      console.error('Ошибка форматирования времени:', error);
+      return '--:--';
+    }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return '--.--.----';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '--.--.----';
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Ошибка форматирования даты:', error);
+      return '--.--.----';
+    }
   };
 
   const formatDuration = (minutes) => {
-    if (!minutes) return '0 ч 0 мин';
+    if (!minutes || minutes < 0) return '0 ч 0 мин';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours} ч ${mins} мин`;
@@ -55,32 +85,40 @@ function TrainCard({ train, onSelect }) {
 
   const getWagonTypeName = (type) => {
     const types = {
-      sitting: 'Сидячий',
-      platzkart: 'Плацкарт',
-      coupe: 'Купе',
-      lux: 'Люкс',
-      first: 'Люкс',
-      second: 'Купе',
-      third: 'Плацкарт',
-      fourth: 'Сидячий'
+      'sitting': 'Сидячий',
+      'platzkart': 'Плацкарт',
+      'coupe': 'Купе',
+      'lux': 'Люкс',
+      'first': 'Люкс',
+      'second': 'Купе',
+      'third': 'Плацкарт',
+      'fourth': 'Сидячий'
     };
-    return types[type] || type;
+    return types[type] || type || 'Неизвестно';
   };
 
   const formatPrice = (price) => {
-    if (!price) return '0';
+    if (price === null || price === undefined) return '0';
     return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   };
 
-  // Получаем минимальную цену из всех вагонов
-  const getMinPrice = () => {
-    if (!train.wagons || train.wagons.length === 0) return 0;
-    const prices = train.wagons.map(w => w.price || 0).filter(p => p > 0);
-    return prices.length > 0 ? Math.min(...prices) : 0;
-  };
+  // Генерируем уникальный ключ для элементов
+  const uniqueKey = train.id || `train-${train.number}-${train.fromCity}-${train.toCity}`;
 
   return (
-    <div className="train-card" onClick={handleSelect} style={{ cursor: 'pointer' }}>
+    <div 
+      className="train-card" 
+      onClick={handleSelect} 
+      style={{ cursor: 'pointer' }}
+      data-train-id={uniqueKey}
+      role="button"
+      tabIndex={0}
+      onKeyPress={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleSelect(e);
+        }
+      }}
+    >
       <div className="train-card__header">
         <div className="train-card__number">{train.number || '---'}</div>
         <div className="train-card__name">{train.name || '---'}</div>
@@ -114,7 +152,10 @@ function TrainCard({ train, onSelect }) {
         <div className="train-card__wagon-types">
           {train.wagons && train.wagons.length > 0 ? (
             train.wagons.map((wagon, index) => (
-              <div key={index} className="train-card__wagon-type">
+              <div 
+                key={`${uniqueKey}-wagon-${index}`} 
+                className="train-card__wagon-type"
+              >
                 <div className="train-card__wagon-name">
                   {getWagonTypeName(wagon.type)}
                 </div>
@@ -128,7 +169,7 @@ function TrainCard({ train, onSelect }) {
             ))
           ) : (
             <div className="train-card__wagon-type">
-              <div className="train-card__wagon-name">Нет данных</div>
+              <div className="train-card__wagon-name">Нет данных о вагонах</div>
             </div>
           )}
         </div>
@@ -137,32 +178,33 @@ function TrainCard({ train, onSelect }) {
       <div className="train-card__additional">
         <div className="train-card__services">
           {train.hasWifi && (
-            <span className="train-card__service" title="Wi-Fi">📶</span>
+            <span className="train-card__service" title="Wi-Fi">📶 Wi-Fi</span>
           )}
           {train.hasConditioner && (
-            <span className="train-card__service" title="Кондиционер">❄️</span>
+            <span className="train-card__service" title="Кондиционер">❄️ Кондиционер</span>
           )}
           {train.hasLinens && (
-            <span className="train-card__service" title="Бельё">🛏️</span>
+            <span className="train-card__service" title="Бельё">🛏️ Бельё</span>
           )}
-        </div>
-        
-        <div className="train-card__selecting">
-          {train.selectingCount > 0 && (
-            <span className="train-card__selecting-count">
-              {train.selectingCount} человек выбирают места
+          {!train.hasWifi && !train.hasConditioner && !train.hasLinens && (
+            <span className="train-card__service train-card__service--none">
+              Без дополнительных услуг
             </span>
           )}
         </div>
+        
+        {train.selectingCount > 0 && (
+          <div className="train-card__selecting">
+            <span className="train-card__selecting-count">
+              {train.selectingCount} человек выбирают места
+            </span>
+          </div>
+        )}
       </div>
 
       <button 
         className="train-card__select-button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleSelect(e);
-        }}
+        onClick={handleSelect}
         type="button"
       >
         Выбрать места
