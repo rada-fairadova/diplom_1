@@ -41,12 +41,18 @@ api.interceptors.response.use(
     console.log(`📥 API Response [${requestId}] (${duration}ms):`, {
       status: response.status,
       url: response.config.url,
+      dataPreview: JSON.stringify(response.data).substring(0, 500)
     });
     
     return response;
   },
   (error) => {
-    console.error('❌ API Response Error:', error.response?.data || error.message);
+    console.error('❌ API Response Error:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      data: error.response?.data,
+      message: error.message
+    });
     return Promise.reject(error);
   }
 );
@@ -70,11 +76,18 @@ const trainApi = {
         }
       });
       
+      console.log('📦 Ответ searchCities (полный):', JSON.stringify(response.data));
+      
       let cities = response.data;
       
-      if (cities && cities.items && Array.isArray(cities.items)) {
+      if (cities && Array.isArray(cities.items)) {
         cities = cities.items;
+      } else if (cities && Array.isArray(cities.data)) {
+        cities = cities.data;
+      } else if (cities && Array.isArray(cities.results)) {
+        cities = cities.results;
       } else if (!Array.isArray(cities)) {
+        console.warn('⚠️ Неизвестный формат городов:', cities);
         cities = [];
       }
       
@@ -82,14 +95,7 @@ const trainApi = {
       return cities;
     } catch (error) {
       console.error('❌ Ошибка поиска городов:', error);
-      // Возвращаем моковые данные при ошибке
-      return [
-        { _id: '1', id: '1', name: 'Москва' },
-        { _id: '2', id: '2', name: 'Санкт-Петербург' },
-        { _id: '3', id: '3', name: 'Казань' },
-        { _id: '4', id: '4', name: 'Сочи' },
-        { _id: '5', id: '5', name: 'Екатеринбург' },
-      ];
+      return [];
     }
   },
 
@@ -100,7 +106,7 @@ const trainApi = {
       
       if (!params.from_city_id || !params.to_city_id) {
         console.warn('⚠️ Не указаны города отправления и прибытия');
-        return this.getMockRoutesResponse();
+        return { items: [], total_count: 0 };
       }
       
       const dateStart = params.date_start || new Date().toISOString().split('T')[0];
@@ -111,299 +117,186 @@ const trainApi = {
         to_city_id: params.to_city_id,
         date_start: dateStart,
         date_end: dateEnd,
-        limit: params.limit || 50,
-        offset: params.offset || 0
       };
-      
-      if (params.have_first_class) apiParams.have_first_class = true;
-      if (params.have_second_class) apiParams.have_second_class = true;
-      if (params.have_third_class) apiParams.have_third_class = true;
-      if (params.have_fourth_class) apiParams.have_fourth_class = true;
-      if (params.have_wifi) apiParams.have_wifi = true;
-      if (params.have_air_conditioning) apiParams.have_air_conditioning = true;
-      if (params.have_express) apiParams.have_express = true;
-      if (params.price_from) apiParams.price_from = params.price_from;
-      if (params.price_to) apiParams.price_to = params.price_to;
-      if (params.sort) apiParams.sort = params.sort;
       
       console.log('📋 Отправляемые параметры:', apiParams);
       
       const response = await api.get('/routes', { params: apiParams });
       
       console.log('✅ Ответ API получен, статус:', response.status);
+      console.log('📦 Тело ответа (полностью):', JSON.stringify(response.data, null, 2));
       
       let routesData = response.data;
       
-      if (routesData && routesData.items && Array.isArray(routesData.items)) {
-        console.log(`📊 Найдено маршрутов: ${routesData.items.length}`);
+      if (routesData && Array.isArray(routesData.items)) {
+        console.log(`📊 Формат: items массив, найдено: ${routesData.items.length}`);
         return routesData;
+      } else if (routesData && Array.isArray(routesData.data)) {
+        console.log(`📊 Формат: data массив, найдено: ${routesData.data.length}`);
+        return {
+          items: routesData.data,
+          total_count: routesData.total_count || routesData.data.length
+        };
+      } else if (routesData && Array.isArray(routesData.results)) {
+        console.log(`📊 Формат: results массив, найдено: ${routesData.results.length}`);
+        return {
+          items: routesData.results,
+          total_count: routesData.total_count || routesData.results.length
+        };
       } else if (Array.isArray(routesData)) {
-        console.log(`📊 Найдено маршрутов: ${routesData.length}`);
+        console.log(`📊 Формат: прямой массив, найдено: ${routesData.length}`);
         return {
           items: routesData,
-          total_count: routesData.length,
-          offset: 0,
-          limit: routesData.length
+          total_count: routesData.length
         };
       } else {
-        console.warn('⚠️ Неожиданный формат ответа API, возвращаем мок');
-        return this.getMockRoutesResponse();
+        console.warn('⚠️ Неизвестный формат ответа API:', typeof routesData, routesData);
+        return { items: [], total_count: 0 };
       }
     } catch (error) {
       console.error('❌ Ошибка поиска маршрутов:', error);
-      return this.getMockRoutesResponse();
+      throw error;
     }
   },
 
-  // Вспомогательный метод для моковых маршрутов
-  getMockRoutesResponse() {
-    return {
-      items: [
-        {
-          _id: 'route-mock-001',
-          departure: {
-            train: { number: '116C', name: 'Сапсан' },
-            from: {
-              city: { name: 'Москва' },
-              railway_station_name: 'Ленинградский вокзал',
-              datetime: new Date(2026, 4, 5, 8, 0).toISOString()
-            },
-            to: {
-              city: { name: 'Санкт-Петербург' },
-              railway_station_name: 'Московский вокзал',
-              datetime: new Date(2026, 4, 5, 13, 30).toISOString()
-            },
-            duration: 330,
-            have_first_class: false,
-            have_second_class: true,
-            have_third_class: true,
-            have_fourth_class: false,
-            have_wifi: true,
-            have_air_conditioning: true,
-            have_linens_included: false,
-            price_info: {
-              second: { bottom_price: 3200, top_price: 3500 },
-              third: { bottom_price: 2100, top_price: 2400 }
-            },
-            available_seats_info: {
-              second: 15,
-              third: 8
-            }
-          }
-        },
-        {
-          _id: 'route-mock-002',
-          departure: {
-            train: { number: '044A', name: 'Невский экспресс' },
-            from: {
-              city: { name: 'Москва' },
-              railway_station_name: 'Курский вокзал',
-              datetime: new Date(2026, 4, 5, 10, 30).toISOString()
-            },
-            to: {
-              city: { name: 'Санкт-Петербург' },
-              railway_station_name: 'Ладожский вокзал',
-              datetime: new Date(2026, 4, 5, 16, 45).toISOString()
-            },
-            duration: 375,
-            have_first_class: false,
-            have_second_class: false,
-            have_third_class: true,
-            have_fourth_class: true,
-            have_wifi: false,
-            have_air_conditioning: true,
-            have_linens_included: true,
-            price_info: {
-              third: { bottom_price: 2300, top_price: 2600 },
-              fourth: { bottom_price: 1900, top_price: 2200 }
-            },
-            available_seats_info: {
-              third: 12,
-              fourth: 25
-            }
-          }
-        },
-        {
-          _id: 'route-mock-003',
-          departure: {
-            train: { number: '720A', name: 'Татарстан' },
-            from: {
-              city: { name: 'Москва' },
-              railway_station_name: 'Казанский вокзал',
-              datetime: new Date(2026, 4, 5, 22, 15).toISOString()
-            },
-            to: {
-              city: { name: 'Казань' },
-              railway_station_name: 'Главный вокзал',
-              datetime: new Date(2026, 4, 6, 9, 45).toISOString()
-            },
-            duration: 690,
-            have_first_class: true,
-            have_second_class: true,
-            have_third_class: false,
-            have_fourth_class: false,
-            have_wifi: true,
-            have_air_conditioning: true,
-            have_linens_included: true,
-            price_info: {
-              first: { bottom_price: 8500, top_price: 9200 },
-              second: { bottom_price: 4800, top_price: 5200 }
-            },
-            available_seats_info: {
-              first: 3,
-              second: 7
-            }
-          }
-        }
-      ],
-      total_count: 3,
-      offset: 0,
-      limit: 3
-    };
-  },
-
   // Форматирование маршрута из API в формат UI
-  formatRouteForUI(apiRoute) {
+  formatRouteForUI(apiRoute, index = 0) {
     try {
-      const route = apiRoute.departure || apiRoute;
+      console.log('🔄 Форматируем маршрут:', JSON.stringify(apiRoute).substring(0, 300));
+      
+      const route = apiRoute.departure || apiRoute.train || apiRoute;
       
       if (!route) {
-        console.error('Некорректная структура маршрута:', apiRoute);
+        console.error('❌ Некорректная структура маршрута:', apiRoute);
         return null;
       }
       
-      const train = route.train || {};
-      const from = route.from || {};
-      const to = route.to || {};
-      const fromCity = from.city || {};
-      const toCity = to.city || {};
+      const train = route.train || apiRoute.train || {};
+      const from = route.from || apiRoute.from || {};
+      const to = route.to || apiRoute.to || {};
+      const fromCity = from.city || apiRoute.from_city || {};
+      const toCity = to.city || apiRoute.to_city || {};
       
-      const priceInfo = route.price_info || {};
-      const availableSeatsInfo = route.available_seats_info || {};
+      const priceInfo = route.price_info || apiRoute.price_info || {};
+      const availableSeatsInfo = route.available_seats_info || apiRoute.available_seats_info || {};
       
       const wagons = [];
       
-      // Люкс (first class)
-      if (route.have_first_class) {
-        const price = priceInfo.first?.bottom_price || priceInfo.first?.price || 5000;
+      const hasFirstClass = route.have_first_class || apiRoute.have_first_class || false;
+      const hasSecondClass = route.have_second_class || apiRoute.have_second_class || false;
+      const hasThirdClass = route.have_third_class || apiRoute.have_third_class || false;
+      const hasFourthClass = route.have_fourth_class || apiRoute.have_fourth_class || false;
+      
+      // Генерируем уникальную основу для ID
+      const baseId = apiRoute._id || apiRoute.id || `route-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`;
+      
+      if (hasFirstClass) {
+        const price = priceInfo.first?.bottom_price || priceInfo.first?.price || 
+                     apiRoute.first_class_price || 0;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-first-${Math.random().toString(36).substr(2, 5)}`,
+          id: `${baseId}-first`,
           type: 'lux',
           name: 'Люкс',
           apiType: 'first',
           price: price,
-          availableSeats: availableSeatsInfo.first || route.available_first_class || 10,
-          topPrice: priceInfo.first?.top_price || price * 1.2
+          availableSeats: availableSeatsInfo.first || route.available_first_class || 
+                         apiRoute.available_first_class || 0,
+          topPrice: priceInfo.first?.top_price || 0
         });
       }
       
-      // Купе (second class)
-      if (route.have_second_class) {
-        const price = priceInfo.second?.bottom_price || priceInfo.second?.price || 2500;
+      if (hasSecondClass) {
+        const price = priceInfo.second?.bottom_price || priceInfo.second?.price || 
+                     apiRoute.second_class_price || 0;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-second-${Math.random().toString(36).substr(2, 5)}`,
+          id: `${baseId}-second`,
           type: 'coupe',
           name: 'Купе',
           apiType: 'second',
           price: price,
-          availableSeats: availableSeatsInfo.second || route.available_second_class || 20,
-          topPrice: priceInfo.second?.top_price || price * 1.2
+          availableSeats: availableSeatsInfo.second || route.available_second_class || 
+                         apiRoute.available_second_class || 0,
+          topPrice: priceInfo.second?.top_price || 0
         });
       }
       
-      // Плацкарт (third class)
-      if (route.have_third_class) {
-        const price = priceInfo.third?.bottom_price || priceInfo.third?.price || 1800;
+      if (hasThirdClass) {
+        const price = priceInfo.third?.bottom_price || priceInfo.third?.price || 
+                     apiRoute.third_class_price || 0;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-third-${Math.random().toString(36).substr(2, 5)}`,
+          id: `${baseId}-third`,
           type: 'platzkart',
           name: 'Плацкарт',
           apiType: 'third',
           price: price,
-          availableSeats: availableSeatsInfo.third || route.available_third_class || 30,
-          topPrice: priceInfo.third?.top_price || price * 1.2
+          availableSeats: availableSeatsInfo.third || route.available_third_class || 
+                         apiRoute.available_third_class || 0,
+          topPrice: priceInfo.third?.top_price || 0
         });
       }
       
-      // Сидячий (fourth class)
-      if (route.have_fourth_class) {
-        const price = priceInfo.fourth?.bottom_price || priceInfo.fourth?.price || 1200;
+      if (hasFourthClass) {
+        const price = priceInfo.fourth?.bottom_price || priceInfo.fourth?.price || 
+                     apiRoute.fourth_class_price || 0;
         wagons.push({
-          id: `${apiRoute._id || Date.now()}-fourth-${Math.random().toString(36).substr(2, 5)}`,
+          id: `${baseId}-fourth`,
           type: 'sitting',
           name: 'Сидячий',
           apiType: 'fourth',
           price: price,
-          availableSeats: availableSeatsInfo.fourth || route.available_fourth_class || 50,
-          topPrice: priceInfo.fourth?.top_price || price * 1.2
+          availableSeats: availableSeatsInfo.fourth || route.available_fourth_class || 
+                         apiRoute.available_fourth_class || 0,
+          topPrice: priceInfo.fourth?.top_price || 0
         });
       }
       
-      // Если нет вагонов, добавляем резервные
-      if (wagons.length === 0) {
-        if (route.have_first_class) {
-          wagons.push({
-            id: `${apiRoute._id || Date.now()}-first-${Math.random().toString(36).substr(2, 5)}`,
-            type: 'lux', name: 'Люкс', apiType: 'first',
-            price: 5000, availableSeats: 10, topPrice: 6000
-          });
-        }
-        if (route.have_second_class) {
-          wagons.push({
-            id: `${apiRoute._id || Date.now()}-second-${Math.random().toString(36).substr(2, 5)}`,
-            type: 'coupe', name: 'Купе', apiType: 'second',
-            price: 2500, availableSeats: 20, topPrice: 3000
-          });
-        }
-        if (route.have_third_class) {
-          wagons.push({
-            id: `${apiRoute._id || Date.now()}-third-${Math.random().toString(36).substr(2, 5)}`,
-            type: 'platzkart', name: 'Плацкарт', apiType: 'third',
-            price: 1800, availableSeats: 30, topPrice: 2200
-          });
-        }
-        if (route.have_fourth_class) {
-          wagons.push({
-            id: `${apiRoute._id || Date.now()}-fourth-${Math.random().toString(36).substr(2, 5)}`,
-            type: 'sitting', name: 'Сидячий', apiType: 'fourth',
-            price: 1200, availableSeats: 50, topPrice: 1500
-          });
-        }
-      }
-      
       const minPrice = wagons.length > 0 
-        ? Math.min(...wagons.map(w => w.price))
+        ? Math.min(...wagons.map(w => w.price || 0))
         : 0;
       
-      const departureDateTime = from.datetime ? new Date(from.datetime) : new Date();
-      const arrivalDateTime = to.datetime ? new Date(to.datetime) : new Date();
+      const departureDateTime = from.datetime ? new Date(from.datetime) : 
+                               apiRoute.departure_datetime ? new Date(apiRoute.departure_datetime) : 
+                               new Date();
+      const arrivalDateTime = to.datetime ? new Date(to.datetime) : 
+                             apiRoute.arrival_datetime ? new Date(apiRoute.arrival_datetime) : 
+                             new Date();
       
-      let duration = route.duration;
+      let duration = route.duration || apiRoute.duration || 0;
       if (!duration && departureDateTime && arrivalDateTime) {
         duration = Math.floor((arrivalDateTime - departureDateTime) / (1000 * 60));
       }
       
-      return {
-        id: apiRoute._id || `route-${Date.now()}`,
-        number: train.number || train.name || 'Unknown',
+      const result = {
+        id: baseId,
+        number: train.number || train.name || apiRoute.train_number || 'Unknown',
         name: `${fromCity.name || 'Unknown'} → ${toCity.name || 'Unknown'}`,
-        fromCity: fromCity.name || 'Unknown',
-        fromStation: from.railway_station_name || 'Unknown Station',
-        toCity: toCity.name || 'Unknown',
-        toStation: to.railway_station_name || 'Unknown Station',
+        fromCity: fromCity.name || apiRoute.from_city_name || 'Unknown',
+        fromStation: from.railway_station_name || apiRoute.from_station || 'Unknown Station',
+        toCity: toCity.name || apiRoute.to_city_name || 'Unknown',
+        toStation: to.railway_station_name || apiRoute.to_station || 'Unknown Station',
         departureTime: departureDateTime.toISOString(),
         arrivalTime: arrivalDateTime.toISOString(),
         departureDate: departureDateTime.toLocaleDateString('ru-RU'),
         arrivalDate: arrivalDateTime.toLocaleDateString('ru-RU'),
-        duration: duration || 0,
+        duration: duration,
         minPrice: minPrice,
         wagons: wagons,
-        hasWifi: route.have_wifi || false,
-        hasConditioner: route.have_air_conditioning || false,
-        hasLinens: route.have_linens_included || false
+        hasWifi: route.have_wifi || apiRoute.have_wifi || false,
+        hasConditioner: route.have_air_conditioning || apiRoute.have_air_conditioning || false,
+        hasLinens: route.have_linens_included || apiRoute.have_linens_included || false
       };
+      
+      console.log('✅ Сформатированный маршрут:', {
+        id: result.id,
+        number: result.number,
+        from: result.fromCity,
+        to: result.toCity,
+        wagons: result.wagons.length
+      });
+      
+      return result;
     } catch (error) {
-      console.error('❌ Ошибка форматирования маршрута:', error, apiRoute);
+      console.error('❌ Ошибка форматирования маршрута:', error);
       return null;
     }
   },

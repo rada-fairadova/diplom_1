@@ -64,17 +64,17 @@ function SeatsSelectionPage() {
   // Функция для получения цены по умолчанию
   const getDefaultPrice = useCallback((type) => {
     const prices = {
-      'lux': 4950,
-      'coupe': 3820,
-      'platzkart': 2530,
-      'sitting': 1920
+      'lux': 0,
+      'coupe': 0,
+      'platzkart': 0,
+      'sitting': 0
     };
-    return prices[type] || 2000;
+    return prices[type] || 0;
   }, []);
 
   // Функция для генерации занятых мест
   const generateOccupiedSeats = useCallback((totalSeats, availableSeats) => {
-    const occupiedCount = totalSeats - availableSeats;
+    const occupiedCount = Math.max(0, totalSeats - availableSeats);
     const occupiedSeats = [];
     
     for (let i = 0; i < occupiedCount; i++) {
@@ -92,7 +92,7 @@ function SeatsSelectionPage() {
   const handleWagonSelect = useCallback((wagon) => {
     console.log('Выбран вагон:', wagon);
     setSelectedWagonLocal(wagon);
-    setSelectedSeatsLocal([]); // Сбрасываем выбранные места при смене вагона
+    setSelectedSeatsLocal([]);
   }, []);
 
   // Обработчик выбора места
@@ -155,8 +155,8 @@ function SeatsSelectionPage() {
               type: wagon.type || wagon.apiType,
               name: wagon.name || wagonTypeConfig.name,
               totalSeats: wagon.totalSeats || wagonTypeConfig.totalSeats,
-              availableSeats: wagon.availableSeats || Math.floor(Math.random() * 15) + 5,
-              price: wagon.price || getDefaultPrice(wagon.type || wagon.apiType),
+              availableSeats: wagon.availableSeats || 0,
+              price: wagon.price || 0,
               features: wagonTypeConfig.features,
               icon: wagonTypeConfig.icon,
               seatsPerRow: wagonTypeConfig.seatsPerRow
@@ -166,15 +166,14 @@ function SeatsSelectionPage() {
           console.log('Сформированные вагоны:', wagons);
           setAvailableWagons(wagons);
         } else {
-          console.warn('У поезда нет вагонов, используем моковые');
-          const mockWagons = getMockWagons();
-          setAvailableWagons(mockWagons);
+          console.warn('У поезда нет доступных вагонов');
+          setAvailableWagons([]);
+          setError('У этого поезда нет доступных вагонов');
         }
       } catch (err) {
         console.error('Ошибка при загрузке мест:', err);
         setError('Не удалось загрузить информацию о местах');
-        const mockWagons = getMockWagons();
-        setAvailableWagons(mockWagons);
+        setAvailableWagons([]);
       } finally {
         setLoading(false);
       }
@@ -223,14 +222,13 @@ function SeatsSelectionPage() {
     return selectedSeats.length * selectedWagon.price;
   }, [selectedWagon, selectedSeats]);
 
-  // Обработчик продолжения - передача данных в API
+  // Обработчик продолжения
   const handleContinue = useCallback(() => {
     if (selectedSeats.length === 0) {
       alert('Пожалуйста, выберите хотя бы одно место');
       return;
     }
     
-    // Формируем данные для API
     const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
     
     const bookingData = {
@@ -263,19 +261,16 @@ function SeatsSelectionPage() {
     
     console.log('📦 Данные для API (бронирование):', bookingData);
     
-    // Сохраняем в контекст
     setSelectedWagonContext({
       ...selectedWagon,
       bookingData: bookingData
     });
     setSelectedSeatsContext(selectedSeats);
     
-    // Сохраняем в localStorage для восстановления
     localStorage.setItem('bookingData', JSON.stringify(bookingData));
     localStorage.setItem('selectedWagon', JSON.stringify(selectedWagon));
     localStorage.setItem('selectedSeats', JSON.stringify(selectedSeats));
     
-    // Переходим на страницу пассажиров
     navigate('/passengers');
   }, [
     selectedWagon, 
@@ -292,62 +287,35 @@ function SeatsSelectionPage() {
     return price ? price.toLocaleString('ru-RU') : '0';
   }, []);
 
-  // Моковые вагоны
-  const getMockWagons = useCallback(() => {
-    return [
-      {
-        id: 'lux-1',
-        number: 1,
-        type: 'lux',
-        name: 'Люкс',
-        totalSeats: 18,
-        availableSeats: 8,
-        price: 4950,
-        features: ['2 места в купе', 'Душ/туалет', 'ТВ', 'Кондиционер', 'Белье включено'],
-        icon: '⭐',
-        seatsPerRow: 2
-      },
-      {
-        id: 'coupe-2',
-        number: 2,
-        type: 'coupe',
-        name: 'Купе',
-        totalSeats: 36,
-        availableSeats: 15,
-        price: 3820,
-        features: ['4 места в купе', 'Кондиционер', 'Розетки', 'Белье включено'],
-        icon: '🚂',
-        seatsPerRow: 4
-      },
-      {
-        id: 'platzkart-3',
-        number: 3,
-        type: 'platzkart',
-        name: 'Плацкарт',
-        totalSeats: 54,
-        availableSeats: 24,
-        price: 2530,
-        features: ['54 места в вагоне', 'Белье включено', 'Общие розетки'],
-        icon: '🛌',
-        seatsPerRow: 9
-      },
-      {
-        id: 'sitting-4',
-        number: 4,
-        type: 'sitting',
-        name: 'Сидячий',
-        totalSeats: 60,
-        availableSeats: 35,
-        price: 1920,
-        features: ['Сидячие места', 'Кондиционер', 'Розетки'],
-        icon: '💺',
-        seatsPerRow: 6
-      }
-    ];
-  }, []);
+  // Состояние загрузки
+  if (loading) {
+    return (
+      <div className="seats-selection-page loading">
+        <div className="loading-spinner"></div>
+        <p>Загрузка доступных мест...</p>
+      </div>
+    );
+  }
+
+  // Состояние ошибки - нет поезда
+  if (!selectedTrain) {
+    return (
+      <div className="seats-selection-page error">
+        <div className="error-message">
+          <h2>Поезд не выбран</h2>
+          <p>Пожалуйста, вернитесь на страницу поиска и выберите поезд</p>
+          <button onClick={() => navigate('/search')} className="back-btn">
+            Вернуться к поиску
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
 
   // Функция для отображения мест в виде сетки
-  const renderSeatGrid = useCallback(() => {
+  const renderSeatGrid = () => {
     if (!selectedWagon || seatMap.length === 0) return null;
 
     const seatsPerRow = selectedWagon.seatsPerRow || 4;
@@ -392,39 +360,10 @@ function SeatsSelectionPage() {
         })}
       </div>
     );
-  }, [selectedWagon, seatMap, selectedSeats, handleSeatSelect, formatPrice]);
-
-  // Состояние загрузки
-  if (loading) {
-    return (
-      <div className="seats-selection-page loading">
-        <div className="loading-spinner"></div>
-        <p>Загрузка доступных мест...</p>
-      </div>
-    );
-  }
-
-  // Состояние ошибки - нет поезда
-  if (!selectedTrain) {
-    return (
-      <div className="seats-selection-page error">
-        <div className="error-message">
-          <h2>Поезд не выбран</h2>
-          <p>Пожалуйста, вернитесь на страницу поиска и выберите поезд</p>
-          <button onClick={() => navigate('/search')} className="back-btn">
-            Вернуться к поиску
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Извлекаем данные поезда для отображения
-  const trainData = selectedTrain.originalData || selectedTrain.train || selectedTrain;
+  };
 
   return (
     <div className="seats-selection-page">
-      {/* Шаги оформления */}
       <div className="booking-steps">
         <div className="step completed">
           <div className="step-number">✓</div>
@@ -450,7 +389,6 @@ function SeatsSelectionPage() {
 
       <div className="seats-selection-container">
         <main className="seats-selection-main">
-          {/* Информация о поезде */}
           <div className="trip-summary">
             <h1 className="trip-summary__title">Выбор мест в вагоне</h1>
             <div className="trip-summary__info">
@@ -483,7 +421,6 @@ function SeatsSelectionPage() {
             </div>
           </div>
 
-          {/* Сообщение об ошибке */}
           {error && (
             <div className="error-notice">
               <div className="error-notice__icon">⚠️</div>
@@ -491,7 +428,6 @@ function SeatsSelectionPage() {
             </div>
           )}
 
-          {/* Выбор типа вагона */}
           <div className="wagon-type-section">
             <h2 className="section-title">Выберите тип вагона</h2>
             <p className="section-subtitle">Нажмите на карточку вагона для выбора</p>
@@ -552,7 +488,6 @@ function SeatsSelectionPage() {
             )}
           </div>
 
-          {/* Выбор мест */}
           {selectedWagon ? (
             <div className="seat-selection-section">
               <div className="section-header">
@@ -603,7 +538,6 @@ function SeatsSelectionPage() {
             </div>
           )}
 
-          {/* Информация о выборе */}
           <div className="selection-info-card">
             <div className="selection-info-content">
               <div className="selection-info-header">
@@ -681,7 +615,6 @@ function SeatsSelectionPage() {
           </div>
         </main>
 
-        {/* Боковая панель */}
         <aside className="seats-selection-sidebar">
           <div className="sidebar-card stats-card">
             <h3>Статистика выбора</h3>
