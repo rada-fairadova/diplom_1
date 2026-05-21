@@ -121,7 +121,6 @@ const generateMockRoutes = (fromCityId, toCityId, fromCityName, toCityName, from
   const routes = [];
   const baseDate = new Date('2024-05-20');
   
-  // ВСЕГДА генерируем ровно 5 маршрутов
   const ROUTE_COUNT = 5;
   
   console.log(`🏭 Генерация ${ROUTE_COUNT} моковых маршрутов для ${fromCityName} → ${toCityName}`);
@@ -129,22 +128,19 @@ const generateMockRoutes = (fromCityId, toCityId, fromCityName, toCityName, from
   for (let i = 0; i < ROUTE_COUNT; i++) {
     const config = TRAIN_CONFIGS[i % TRAIN_CONFIGS.length];
     
-    // Разное время отправления для каждого маршрута
-    const departureHour = 6 + i * 3; // 6, 9, 12, 15, 18 часов
+    const departureHour = 6 + i * 3;
     const departureMinute = [0, 15, 30, 45][i % 4];
     
     const departureDateTime = new Date(baseDate);
     departureDateTime.setHours(departureHour % 24, departureMinute, 0);
     
-    // Разная длительность
     const durationMinutes = config.duration + Math.floor(Math.random() * 60) - 30;
     const durationMs = durationMinutes * 60000;
     const arrivalDateTime = new Date(departureDateTime.getTime() + durationMs);
     
     const routeId = `mock-route-${fromCityId}-${toCityId}-${i}-${Date.now()}`;
     
-    // Разные цены для каждого маршрута
-    const priceMultiplier = 0.8 + (i * 0.1); // 0.8, 0.9, 1.0, 1.1, 1.2
+    const priceMultiplier = 0.8 + (i * 0.1);
     const basePrice = Math.round(config.basePrice * priceMultiplier);
     
     const priceInfo = {};
@@ -155,7 +151,7 @@ const generateMockRoutes = (fromCityId, toCityId, fromCityName, toCityName, from
         bottom_price: Math.round(basePrice * 2.5),
         top_price: Math.round(basePrice * 2.8)
       };
-      availableSeatsInfo.first = 2 + i; // Разное количество мест
+      availableSeatsInfo.first = 2 + i;
     }
     
     if (config.have_second_class) {
@@ -343,7 +339,6 @@ const trainApi = {
         
         console.log(`✅ Найдено городов: ${cities.length}`);
         
-        // Если API вернул пустой массив - используем моковые данные
         if (cities.length === 0) {
           console.log('🔄 API вернул пустой массив городов, используем моковые данные');
           const queryLower = query.toLowerCase();
@@ -391,7 +386,6 @@ const trainApi = {
       
       let items = [];
       
-      // Пытаемся получить данные из API
       try {
         const response = await api.get('/routes', { params: apiParams });
         console.log('✅ Ответ API получен, статус:', response.status);
@@ -399,7 +393,6 @@ const trainApi = {
         
         let routesData = response.data;
         
-        // Извлекаем items из разных форматов ответа
         if (routesData && Array.isArray(routesData.items)) {
           items = routesData.items;
           console.log(`📊 API вернул ${items.length} маршрутов (формат: items)`);
@@ -420,17 +413,14 @@ const trainApi = {
         console.warn('⚠️ API маршрутов недоступен:', apiError.message);
       }
       
-      // ЕСЛИ API ВЕРНУЛ МЕНЬШЕ 5 МАРШРУТОВ - ДОБАВЛЯЕМ МОКОВЫЕ
       if (items.length < 5) {
         console.log(`🔄 API вернул только ${items.length} маршрутов, добавляем моковые до 5`);
         
-        // Находим названия городов по ID
         const fromCity = MOCK_CITIES.find(c => c._id === params.from_city_id) || 
                         { name: 'Город отправления', railway_station_name: 'Центральный вокзал' };
         const toCity = MOCK_CITIES.find(c => c._id === params.to_city_id) || 
                       { name: 'Город прибытия', railway_station_name: 'Главный вокзал' };
         
-        // Генерируем дополнительные моковые маршруты
         const mockItems = generateMockRoutes(
           params.from_city_id,
           params.to_city_id,
@@ -440,16 +430,13 @@ const trainApi = {
           toCity.railway_station_name
         );
         
-        // Добавляем моковые маршруты к существующим
         const existingCount = items.length;
         const neededCount = 5 - existingCount;
         
         if (existingCount > 0) {
-          // Есть реальные маршруты - добавляем только недостающие моковые
           items = [...items, ...mockItems.slice(0, neededCount)];
           console.log(`✅ Объединено: ${existingCount} реальных + ${neededCount} моковых = ${items.length} всего`);
         } else {
-          // Реальных маршрутов нет - используем все 5 моковых
           items = mockItems;
           console.log(`✅ Используем все ${items.length} моковых маршрутов`);
         }
@@ -465,7 +452,6 @@ const trainApi = {
     } catch (error) {
       console.error('❌ Критическая ошибка поиска маршрутов:', error);
       
-      // Даже при критической ошибке возвращаем моковые данные
       try {
         const fromCity = MOCK_CITIES.find(c => c._id === params.from_city_id) || 
                         { name: 'Отправление', railway_station_name: 'Центральный вокзал' };
@@ -596,10 +582,43 @@ const trainApi = {
         duration = Math.floor((arrivalDateTime - departureDateTime) / (1000 * 60));
       }
       
+      // Нормальные названия поездов
+      const normalTrainNames = [
+        { number: '116C', name: 'Сапсан' },
+        { number: '044A', name: 'Невский экспресс' },
+        { number: '720A', name: 'Татарстан' },
+        { number: '256B', name: 'Урал' },
+        { number: '138M', name: 'Сибиряк' },
+        { number: '302H', name: 'Волга' },
+        { number: '002M', name: 'Красная стрела' },
+        { number: '010A', name: 'Московия' },
+        { number: '026C', name: 'Северная Пальмира' },
+        { number: '050H', name: 'Поволжье' },
+      ];
+      
+      let trainNumber = train.number || train.name || apiRoute.train_number || 'Unknown';
+      let trainName = train.name || '';
+      
+      // Проверяем на странные названия
+      if (!trainNumber || 
+          trainNumber === 'undefined' || 
+          trainNumber === 'null' || 
+          /^[А-Я][а-я]+$/.test(trainNumber) || 
+          trainNumber.length > 6 ||
+          trainNumber.includes('Перун') ||
+          trainNumber.includes('Зевс') ||
+          trainNumber.includes('бог') ||
+          trainNumber.includes('богиня') ||
+          trainNumber.includes('Unknown')) {
+        const normalTrain = normalTrainNames[index % normalTrainNames.length];
+        trainNumber = normalTrain.number;
+        trainName = normalTrain.name;
+      }
+      
       const result = {
         id: baseId,
-        number: train.number || train.name || apiRoute.train_number || 'Unknown',
-        name: `${fromCity.name || 'Unknown'} → ${toCity.name || 'Unknown'}`,
+        number: trainNumber,
+        name: trainName || `${fromCity.name || 'Unknown'} → ${toCity.name || 'Unknown'}`,
         fromCity: fromCity.name || apiRoute.from_city_name || 'Unknown',
         fromStation: from.railway_station_name || apiRoute.from_station || 'Unknown Station',
         toCity: toCity.name || apiRoute.to_city_name || 'Unknown',
@@ -619,6 +638,7 @@ const trainApi = {
       console.log('✅ Сформатированный маршрут:', {
         id: result.id,
         number: result.number,
+        name: result.name,
         from: result.fromCity,
         to: result.toCity,
         wagons: result.wagons.length
@@ -722,7 +742,6 @@ const trainApi = {
         console.warn('⚠️ API последних направлений недоступен');
       }
       
-      // Генерируем моковые последние направления
       console.log('🔄 Генерируем моковые последние направления');
       const mockLastRoutes = [];
       const popularRoutes = [
