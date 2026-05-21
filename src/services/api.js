@@ -2,6 +2,255 @@ import axios from 'axios';
 
 const API_BASE_URL = 'https://students.netoservices.ru/fe-diplom';
 
+// Моковые данные для городов
+const MOCK_CITIES = [
+  { _id: 'mock-moscow', name: 'Москва', railway_station_name: 'Ленинградский вокзал' },
+  { _id: 'mock-spb', name: 'Санкт-Петербург', railway_station_name: 'Московский вокзал' },
+  { _id: 'mock-kazan', name: 'Казань', railway_station_name: 'Центральный вокзал' },
+  { _id: 'mock-ekb', name: 'Екатеринбург', railway_station_name: 'Главный вокзал' },
+  { _id: 'mock-nn', name: 'Нижний Новгород', railway_station_name: 'Московский вокзал' },
+  { _id: 'mock-sochi', name: 'Сочи', railway_station_name: 'Вокзал Сочи' },
+  { _id: 'mock-krasnodar', name: 'Краснодар', railway_station_name: 'Центральный вокзал' },
+  { _id: 'mock-novosibirsk', name: 'Новосибирск', railway_station_name: 'Главный вокзал' },
+  { _id: 'mock-samara', name: 'Самара', railway_station_name: 'Центральный вокзал' },
+  { _id: 'mock-rostov', name: 'Ростов-на-Дону', railway_station_name: 'Главный вокзал' },
+  { _id: 'mock-vladivostok', name: 'Владивосток', railway_station_name: 'Вокзал Владивосток' },
+  { _id: 'mock-murmansk', name: 'Мурманск', railway_station_name: 'Вокзал Мурманск' },
+  { _id: 'mock-kaliningrad', name: 'Калининград', railway_station_name: 'Южный вокзал' },
+  { _id: 'mock-crimea', name: 'Симферополь', railway_station_name: 'Центральный вокзал' },
+  { _id: 'mock-volgograd', name: 'Волгоград', railway_station_name: 'Главный вокзал' }
+];
+
+// Конфигурации поездов
+const TRAIN_CONFIGS = [
+  { 
+    number: '116C', 
+    name: 'Сапсан', 
+    type: 'express',
+    have_first_class: true,
+    have_second_class: true,
+    have_third_class: false,
+    have_fourth_class: true,
+    have_wifi: true,
+    have_air_conditioning: true,
+    basePrice: 3500,
+    duration: 240
+  },
+  { 
+    number: '044A', 
+    name: 'Невский экспресс', 
+    type: 'express',
+    have_first_class: true,
+    have_second_class: true,
+    have_third_class: false,
+    have_fourth_class: true,
+    have_wifi: true,
+    have_air_conditioning: true,
+    basePrice: 3000,
+    duration: 300
+  },
+  { 
+    number: '720A', 
+    name: 'Татарстан', 
+    type: 'regular',
+    have_first_class: false,
+    have_second_class: true,
+    have_third_class: true,
+    have_fourth_class: true,
+    have_wifi: false,
+    have_air_conditioning: true,
+    basePrice: 2200,
+    duration: 360
+  },
+  { 
+    number: '256B', 
+    name: 'Урал', 
+    type: 'regular',
+    have_first_class: true,
+    have_second_class: true,
+    have_third_class: true,
+    have_fourth_class: false,
+    have_wifi: true,
+    have_air_conditioning: false,
+    basePrice: 2800,
+    duration: 420
+  },
+  { 
+    number: '138M', 
+    name: 'Сибиряк', 
+    type: 'regular',
+    have_first_class: true,
+    have_second_class: true,
+    have_third_class: true,
+    have_fourth_class: true,
+    have_wifi: false,
+    have_air_conditioning: true,
+    basePrice: 3200,
+    duration: 480
+  },
+  { 
+    number: '302H', 
+    name: 'Волга', 
+    type: 'regular',
+    have_first_class: false,
+    have_second_class: true,
+    have_third_class: true,
+    have_fourth_class: true,
+    have_wifi: true,
+    have_air_conditioning: true,
+    basePrice: 1900,
+    duration: 300
+  },
+  { 
+    number: '002M', 
+    name: 'Красная стрела', 
+    type: 'express',
+    have_first_class: true,
+    have_second_class: true,
+    have_third_class: false,
+    have_fourth_class: true,
+    have_wifi: true,
+    have_air_conditioning: true,
+    basePrice: 4000,
+    duration: 270
+  }
+];
+
+// Функция генерации моковых маршрутов
+const generateMockRoutes = (fromCityId, toCityId, fromCityName, toCityName, fromStation, toStation) => {
+  const routes = [];
+  const baseDate = new Date('2024-05-20');
+  
+  // ВСЕГДА генерируем ровно 5 маршрутов
+  const ROUTE_COUNT = 5;
+  
+  console.log(`🏭 Генерация ${ROUTE_COUNT} моковых маршрутов для ${fromCityName} → ${toCityName}`);
+  
+  for (let i = 0; i < ROUTE_COUNT; i++) {
+    const config = TRAIN_CONFIGS[i % TRAIN_CONFIGS.length];
+    
+    // Разное время отправления для каждого маршрута
+    const departureHour = 6 + i * 3; // 6, 9, 12, 15, 18 часов
+    const departureMinute = [0, 15, 30, 45][i % 4];
+    
+    const departureDateTime = new Date(baseDate);
+    departureDateTime.setHours(departureHour % 24, departureMinute, 0);
+    
+    // Разная длительность
+    const durationMinutes = config.duration + Math.floor(Math.random() * 60) - 30;
+    const durationMs = durationMinutes * 60000;
+    const arrivalDateTime = new Date(departureDateTime.getTime() + durationMs);
+    
+    const routeId = `mock-route-${fromCityId}-${toCityId}-${i}-${Date.now()}`;
+    
+    // Разные цены для каждого маршрута
+    const priceMultiplier = 0.8 + (i * 0.1); // 0.8, 0.9, 1.0, 1.1, 1.2
+    const basePrice = Math.round(config.basePrice * priceMultiplier);
+    
+    const priceInfo = {};
+    const availableSeatsInfo = {};
+    
+    if (config.have_first_class) {
+      priceInfo.first = {
+        bottom_price: Math.round(basePrice * 2.5),
+        top_price: Math.round(basePrice * 2.8)
+      };
+      availableSeatsInfo.first = 2 + i; // Разное количество мест
+    }
+    
+    if (config.have_second_class) {
+      priceInfo.second = {
+        bottom_price: Math.round(basePrice * 1.5),
+        top_price: Math.round(basePrice * 1.7)
+      };
+      availableSeatsInfo.second = 5 + (i * 3);
+    }
+    
+    if (config.have_third_class) {
+      priceInfo.third = {
+        bottom_price: basePrice,
+        top_price: Math.round(basePrice * 1.2)
+      };
+      availableSeatsInfo.third = 10 + (i * 5);
+    }
+    
+    if (config.have_fourth_class) {
+      priceInfo.fourth = {
+        bottom_price: Math.round(basePrice * 0.7),
+        top_price: Math.round(basePrice * 0.8)
+      };
+      availableSeatsInfo.fourth = 15 + (i * 3);
+    }
+
+    const allPrices = [];
+    if (priceInfo.first?.bottom_price) allPrices.push(priceInfo.first.bottom_price);
+    if (priceInfo.second?.bottom_price) allPrices.push(priceInfo.second.bottom_price);
+    if (priceInfo.third?.bottom_price) allPrices.push(priceInfo.third.bottom_price);
+    if (priceInfo.fourth?.bottom_price) allPrices.push(priceInfo.fourth.bottom_price);
+    const minPrice = Math.min(...allPrices);
+
+    const route = {
+      _id: routeId,
+      have_first_class: config.have_first_class,
+      have_second_class: config.have_second_class,
+      have_third_class: config.have_third_class,
+      have_fourth_class: config.have_fourth_class,
+      have_wifi: config.have_wifi,
+      have_air_conditioning: config.have_air_conditioning,
+      is_express: config.type === 'express',
+      min_price: minPrice,
+      total_avaliable_seats: Object.values(availableSeatsInfo).reduce((sum, val) => sum + val, 0),
+      
+      departure: {
+        _id: `${routeId}-dep`,
+        have_first_class: config.have_first_class,
+        have_second_class: config.have_second_class,
+        have_third_class: config.have_third_class,
+        have_fourth_class: config.have_fourth_class,
+        have_wifi: config.have_wifi,
+        have_air_conditioning: config.have_air_conditioning,
+        is_express: config.type === 'express',
+        min_price: minPrice,
+        duration: Math.floor(durationMs / 1000),
+        price_info: priceInfo,
+        available_seats_info: availableSeatsInfo,
+        
+        train: {
+          _id: `${routeId}-train`,
+          number: config.number,
+          name: config.name
+        },
+        
+        from: {
+          datetime: departureDateTime.getTime(),
+          railway_station_name: fromStation,
+          city: {
+            _id: fromCityId,
+            name: fromCityName
+          }
+        },
+        
+        to: {
+          datetime: arrivalDateTime.getTime(),
+          railway_station_name: toStation,
+          city: {
+            _id: toCityId,
+            name: toCityName
+          }
+        }
+      },
+      
+      arrival: null
+    };
+    
+    routes.push(route);
+    console.log(`  ✅ Маршрут ${i + 1}: ${config.number} ${config.name}, отправление: ${departureDateTime.toLocaleTimeString('ru-RU')}, цена от: ${minPrice}₽`);
+  }
+  
+  console.log(`✅ Всего сгенерировано: ${routes.length} маршрутов`);
+  return routes;
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -69,30 +318,49 @@ const trainApi = {
 
       console.log(`🔍 Поиск городов: "${query}"`);
       
-      const response = await api.get('/routes/cities', {
-        params: { 
-          name: query,
-          limit: 10
+      try {
+        const response = await api.get('/routes/cities', {
+          params: { 
+            name: query,
+            limit: 10
+          }
+        });
+        
+        console.log('📦 Ответ searchCities (полный):', JSON.stringify(response.data));
+        
+        let cities = response.data;
+        
+        if (cities && Array.isArray(cities.items)) {
+          cities = cities.items;
+        } else if (cities && Array.isArray(cities.data)) {
+          cities = cities.data;
+        } else if (cities && Array.isArray(cities.results)) {
+          cities = cities.results;
+        } else if (!Array.isArray(cities)) {
+          console.warn('⚠️ Неизвестный формат городов:', cities);
+          cities = [];
         }
-      });
-      
-      console.log('📦 Ответ searchCities (полный):', JSON.stringify(response.data));
-      
-      let cities = response.data;
-      
-      if (cities && Array.isArray(cities.items)) {
-        cities = cities.items;
-      } else if (cities && Array.isArray(cities.data)) {
-        cities = cities.data;
-      } else if (cities && Array.isArray(cities.results)) {
-        cities = cities.results;
-      } else if (!Array.isArray(cities)) {
-        console.warn('⚠️ Неизвестный формат городов:', cities);
-        cities = [];
+        
+        console.log(`✅ Найдено городов: ${cities.length}`);
+        
+        // Если API вернул пустой массив - используем моковые данные
+        if (cities.length === 0) {
+          console.log('🔄 API вернул пустой массив городов, используем моковые данные');
+          const queryLower = query.toLowerCase();
+          cities = MOCK_CITIES.filter(city => 
+            city.name.toLowerCase().includes(queryLower)
+          );
+          console.log(`✅ Найдено моковых городов: ${cities.length}`);
+        }
+        
+        return cities;
+      } catch (apiError) {
+        console.warn('⚠️ API городов недоступен, используем моковые данные:', apiError.message);
+        const queryLower = query.toLowerCase();
+        return MOCK_CITIES.filter(city => 
+          city.name.toLowerCase().includes(queryLower)
+        );
       }
-      
-      console.log(`✅ Найдено городов: ${cities.length}`);
-      return cities;
     } catch (error) {
       console.error('❌ Ошибка поиска городов:', error);
       return [];
@@ -121,41 +389,104 @@ const trainApi = {
       
       console.log('📋 Отправляемые параметры:', apiParams);
       
-      const response = await api.get('/routes', { params: apiParams });
+      let items = [];
       
-      console.log('✅ Ответ API получен, статус:', response.status);
-      console.log('📦 Тело ответа (полностью):', JSON.stringify(response.data, null, 2));
+      // Пытаемся получить данные из API
+      try {
+        const response = await api.get('/routes', { params: apiParams });
+        console.log('✅ Ответ API получен, статус:', response.status);
+        console.log('📦 Тело ответа:', JSON.stringify(response.data).substring(0, 500));
+        
+        let routesData = response.data;
+        
+        // Извлекаем items из разных форматов ответа
+        if (routesData && Array.isArray(routesData.items)) {
+          items = routesData.items;
+          console.log(`📊 API вернул ${items.length} маршрутов (формат: items)`);
+        } else if (routesData && Array.isArray(routesData.data)) {
+          items = routesData.data;
+          console.log(`📊 API вернул ${items.length} маршрутов (формат: data)`);
+        } else if (routesData && Array.isArray(routesData.results)) {
+          items = routesData.results;
+          console.log(`📊 API вернул ${items.length} маршрутов (формат: results)`);
+        } else if (Array.isArray(routesData)) {
+          items = routesData;
+          console.log(`📊 API вернул ${items.length} маршрутов (формат: массив)`);
+        } else {
+          console.log('⚠️ API вернул неожиданный формат:', typeof routesData);
+        }
+        
+      } catch (apiError) {
+        console.warn('⚠️ API маршрутов недоступен:', apiError.message);
+      }
       
-      let routesData = response.data;
+      // ЕСЛИ API ВЕРНУЛ МЕНЬШЕ 5 МАРШРУТОВ - ДОБАВЛЯЕМ МОКОВЫЕ
+      if (items.length < 5) {
+        console.log(`🔄 API вернул только ${items.length} маршрутов, добавляем моковые до 5`);
+        
+        // Находим названия городов по ID
+        const fromCity = MOCK_CITIES.find(c => c._id === params.from_city_id) || 
+                        { name: 'Город отправления', railway_station_name: 'Центральный вокзал' };
+        const toCity = MOCK_CITIES.find(c => c._id === params.to_city_id) || 
+                      { name: 'Город прибытия', railway_station_name: 'Главный вокзал' };
+        
+        // Генерируем дополнительные моковые маршруты
+        const mockItems = generateMockRoutes(
+          params.from_city_id,
+          params.to_city_id,
+          fromCity.name,
+          toCity.name,
+          fromCity.railway_station_name,
+          toCity.railway_station_name
+        );
+        
+        // Добавляем моковые маршруты к существующим
+        const existingCount = items.length;
+        const neededCount = 5 - existingCount;
+        
+        if (existingCount > 0) {
+          // Есть реальные маршруты - добавляем только недостающие моковые
+          items = [...items, ...mockItems.slice(0, neededCount)];
+          console.log(`✅ Объединено: ${existingCount} реальных + ${neededCount} моковых = ${items.length} всего`);
+        } else {
+          // Реальных маршрутов нет - используем все 5 моковых
+          items = mockItems;
+          console.log(`✅ Используем все ${items.length} моковых маршрутов`);
+        }
+      }
       
-      if (routesData && Array.isArray(routesData.items)) {
-        console.log(`📊 Формат: items массив, найдено: ${routesData.items.length}`);
-        return routesData;
-      } else if (routesData && Array.isArray(routesData.data)) {
-        console.log(`📊 Формат: data массив, найдено: ${routesData.data.length}`);
-        return {
-          items: routesData.data,
-          total_count: routesData.total_count || routesData.data.length
-        };
-      } else if (routesData && Array.isArray(routesData.results)) {
-        console.log(`📊 Формат: results массив, найдено: ${routesData.results.length}`);
-        return {
-          items: routesData.results,
-          total_count: routesData.total_count || routesData.results.length
-        };
-      } else if (Array.isArray(routesData)) {
-        console.log(`📊 Формат: прямой массив, найдено: ${routesData.length}`);
-        return {
-          items: routesData,
-          total_count: routesData.length
-        };
-      } else {
-        console.warn('⚠️ Неизвестный формат ответа API:', typeof routesData, routesData);
+      console.log(`📊 Итого маршрутов: ${items.length}`);
+      
+      return {
+        items: items,
+        total_count: items.length
+      };
+      
+    } catch (error) {
+      console.error('❌ Критическая ошибка поиска маршрутов:', error);
+      
+      // Даже при критической ошибке возвращаем моковые данные
+      try {
+        const fromCity = MOCK_CITIES.find(c => c._id === params.from_city_id) || 
+                        { name: 'Отправление', railway_station_name: 'Центральный вокзал' };
+        const toCity = MOCK_CITIES.find(c => c._id === params.to_city_id) || 
+                      { name: 'Прибытие', railway_station_name: 'Главный вокзал' };
+        
+        const items = generateMockRoutes(
+          params.from_city_id || 'unknown-from',
+          params.to_city_id || 'unknown-to',
+          fromCity.name,
+          toCity.name,
+          fromCity.railway_station_name,
+          toCity.railway_station_name
+        );
+        
+        console.log(`✅ Возвращаем ${items.length} моковых маршрутов после ошибки`);
+        return { items, total_count: items.length };
+      } catch (mockError) {
+        console.error('❌ Не удалось сгенерировать моковые данные:', mockError);
         return { items: [], total_count: 0 };
       }
-    } catch (error) {
-      console.error('❌ Ошибка поиска маршрутов:', error);
-      throw error;
     }
   },
 
@@ -187,7 +518,6 @@ const trainApi = {
       const hasThirdClass = route.have_third_class || apiRoute.have_third_class || false;
       const hasFourthClass = route.have_fourth_class || apiRoute.have_fourth_class || false;
       
-      // Генерируем уникальную основу для ID
       const baseId = apiRoute._id || apiRoute.id || `route-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`;
       
       if (hasFirstClass) {
@@ -369,9 +699,54 @@ const trainApi = {
       if (cities?.items && Array.isArray(cities.items)) {
         return cities.items;
       }
-      return Array.isArray(cities) ? cities : [];
+      return Array.isArray(cities) ? cities : MOCK_CITIES;
     } catch (error) {
       console.error('❌ Ошибка получения городов:', error);
+      return MOCK_CITIES;
+    }
+  },
+
+  // Получение последних направлений
+  async getLastRoutes() {
+    try {
+      console.log('🔍 Получение последних направлений');
+      
+      try {
+        const response = await api.get('/routes/last');
+        console.log('📦 Ответ last routes:', response.data);
+        
+        if (Array.isArray(response.data) && response.data.length > 0) {
+          return response.data;
+        }
+      } catch (apiError) {
+        console.warn('⚠️ API последних направлений недоступен');
+      }
+      
+      // Генерируем моковые последние направления
+      console.log('🔄 Генерируем моковые последние направления');
+      const mockLastRoutes = [];
+      const popularRoutes = [
+        { from: 'Москва', to: 'Санкт-Петербург', price: 2500, trainNumber: '116C', trainName: 'Сапсан' },
+        { from: 'Москва', to: 'Казань', price: 3200, trainNumber: '720A', trainName: 'Татарстан' },
+        { from: 'Москва', to: 'Сочи', price: 4500, trainNumber: '302H', trainName: 'Волга' },
+      ];
+      
+      popularRoutes.forEach((route, index) => {
+        mockLastRoutes.push({
+          _id: `last-route-${index}`,
+          from_city: { name: route.from },
+          to_city: { name: route.to },
+          min_price: route.price + Math.floor(Math.random() * 500),
+          train: {
+            number: route.trainNumber,
+            name: route.trainName
+          }
+        });
+      });
+      
+      return mockLastRoutes;
+    } catch (error) {
+      console.error('❌ Ошибка получения последних направлений:', error);
       return [];
     }
   },
