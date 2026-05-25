@@ -50,14 +50,14 @@
   margin-bottom: 12px;
 }
 
-/* Типы вагонов - ОСНОВНЫЕ СТИЛИ */
+/* Типы вагонов - КНОПКИ */
 .wagon-types {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
-.wagon-types__option {
+.wagon-types__btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -67,122 +67,113 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
 }
 
-.wagon-types__option:hover {
+.wagon-types__btn:hover {
   background: #fff4e8;
   border-color: #ff6600;
 }
 
-.wagon-types__option--active {
+.wagon-types__btn--active {
   background: #ff6600;
   border-color: #ff6600;
 }
 
-.wagon-types__option--active .wagon-types__label,
-.wagon-types__option--active .wagon-types__icon {
+.wagon-types__btn--active .wagon-types__label,
+.wagon-types__btn--active .wagon-types__icon {
   color: white;
-}
-
-/* Скрываем радио кнопку, но оставляем ее кликабельной */
-.wagon-types__radio {
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  margin: 0;
 }
 
 .wagon-types__icon {
   font-size: 18px;
   color: #666;
-  position: relative;
-  z-index: 1;
 }
 
 .wagon-types__label {
   font-size: 14px;
   font-weight: 500;
   color: #333;
-  position: relative;
-  z-index: 1;
 }
 
-.wagon-types__option--active .wagon-types__label,
-.wagon-types__option--active .wagon-types__icon {
-  color: white;
-}
-
-/* Опции фильтров (радио кнопки для цены и времени) */
+/* Опции фильтров (КНОПКИ для цены и времени) */
 .filters__options {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.filters__option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.filters__btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
   cursor: pointer;
-  padding: 6px 0;
-}
-
-.filters__radio {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  cursor: pointer;
-  accent-color: #ff6600;
-}
-
-.filters__option-label {
+  transition: all 0.2s ease;
+  font-family: inherit;
   font-size: 14px;
   color: #555;
-  cursor: pointer;
-  transition: color 0.3s ease;
+  outline: none;
 }
 
-.filters__option:hover .filters__option-label {
+.filters__btn:hover {
+  background: #fff4e8;
+  border-color: #ff6600;
   color: #ff6600;
+}
+
+.filters__btn--active {
+  background: #fff4e8;
+  border-color: #ff6600;
+  color: #ff6600;
+  font-weight: 600;
 }
 
 /* Чекбоксы услуг */
 .filters__checkboxes {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.filters__checkbox-label {
+.filters__checkbox-btn {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
   cursor: pointer;
-  padding: 6px 0;
-}
-
-.filters__checkbox {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  cursor: pointer;
-  accent-color: #ff6600;
-}
-
-.filters__checkbox-text {
+  transition: all 0.2s ease;
+  font-family: inherit;
   font-size: 14px;
   color: #555;
-  cursor: pointer;
-  transition: color 0.3s ease;
+  text-align: left;
+  outline: none;
 }
 
-.filters__checkbox-label:hover .filters__checkbox-text {
+.filters__checkbox-btn:hover {
+  background: #fff4e8;
+  border-color: #ff6600;
+}
+
+.filters__checkbox-btn--active {
+  background: #fff4e8;
+  border-color: #ff6600;
   color: #ff6600;
+  font-weight: 600;
+}
+
+.filters__checkbox-btn span:first-child {
+  font-size: 18px;
+  min-width: 20px;
 }
 
 /* Кнопка сброса фильтров */
@@ -198,6 +189,8 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: inherit;
+  outline: none;
 }
 
 .filters__reset-btn:hover {
@@ -417,7 +410,7 @@
     gap: 8px;
   }
 
-  .wagon-types__option {
+  .wagon-types__btn {
     padding: 8px 10px;
   }
 
@@ -465,7 +458,7 @@
     gap: 6px;
   }
 
-  .wagon-types__option {
+  .wagon-types__btn {
     padding: 6px 8px;
   }
 
@@ -499,8 +492,9 @@
 /* Улучшенные стили для фокуса */
 .filters__reset-btn:focus-visible,
 .sort-select:focus-visible,
-.filters__checkbox-label:focus-visible,
-.filters__option:focus-visible {
+.filters__btn:focus-visible,
+.filters__checkbox-btn:focus-visible,
+.wagon-types__btn:focus-visible {
   outline: 2px solid #ff6600;
   outline-offset: 2px;
 }
