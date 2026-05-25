@@ -24,6 +24,7 @@
   position: sticky;
   top: 20px;
   align-self: start;
+  z-index: 10;
 }
 
 .filters__title {
@@ -37,6 +38,8 @@
 
 .filters__section {
   margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
 }
 
 .filters__section:last-child {
@@ -55,6 +58,8 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .wagon-types__btn {
@@ -70,6 +75,10 @@
   font-family: inherit;
   font-size: inherit;
   outline: none;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .wagon-types__btn:hover {
@@ -90,12 +99,14 @@
 .wagon-types__icon {
   font-size: 18px;
   color: #666;
+  pointer-events: none;
 }
 
 .wagon-types__label {
   font-size: 14px;
   font-weight: 500;
   color: #333;
+  pointer-events: none;
 }
 
 /* Опции фильтров (КНОПКИ для цены и времени) */
@@ -103,6 +114,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .filters__btn {
@@ -119,6 +132,9 @@
   font-size: 14px;
   color: #555;
   outline: none;
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
 }
 
 .filters__btn:hover {
@@ -139,6 +155,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .filters__checkbox-btn {
@@ -157,6 +175,9 @@
   color: #555;
   text-align: left;
   outline: none;
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
 }
 
 .filters__checkbox-btn:hover {
@@ -174,6 +195,11 @@
 .filters__checkbox-btn span:first-child {
   font-size: 18px;
   min-width: 20px;
+  pointer-events: none;
+}
+
+.filters__checkbox-btn span:last-child {
+  pointer-events: none;
 }
 
 /* Кнопка сброса фильтров */
@@ -191,6 +217,8 @@
   transition: all 0.2s ease;
   font-family: inherit;
   outline: none;
+  position: relative;
+  z-index: 2;
 }
 
 .filters__reset-btn:hover {
@@ -346,6 +374,8 @@
   font-weight: 500;
   cursor: pointer;
   text-decoration: underline;
+  position: relative;
+  z-index: 2;
 }
 
 .reset-filters-link:hover {
