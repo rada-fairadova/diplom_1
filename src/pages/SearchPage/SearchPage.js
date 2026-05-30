@@ -40,7 +40,15 @@ function formatTime(date) {
   return date.toISOString();
 }
 
+const MOCK_TRAINS_CACHE = {};
+
 function generateMockTrains(fromCity, toCity) {
+  const cacheKey = `${fromCity}_${toCity}`;
+  
+  if (MOCK_TRAINS_CACHE[cacheKey]) {
+    return JSON.parse(JSON.stringify(MOCK_TRAINS_CACHE[cacheKey]));
+  }
+  
   const trains = [];
   const trainData = [
     { number: '116C', name: 'Сапсан', type: 'express', departureHour: 6, departureMinute: 0, durationMinutes: 240 },
@@ -55,7 +63,7 @@ function generateMockTrains(fromCity, toCity) {
     const departureDate = new Date(2024, 4, 20, data.departureHour, data.departureMinute, 0);
     const arrivalDate = new Date(departureDate.getTime() + data.durationMinutes * 60000);
     
-    const trainId = `mock-${Date.now()}-${i}`;
+    const trainId = `mock-${cacheKey}-${i}`;
     const wagons = [];
     
     wagons.push({
@@ -101,8 +109,13 @@ function generateMockTrains(fromCity, toCity) {
       hasLinens: i !== 3
     });
   }
+  
+  MOCK_TRAINS_CACHE[cacheKey] = JSON.parse(JSON.stringify(trains));
   return trains;
 }
+
+// Ключ для localStorage
+const FILTERS_STORAGE_KEY = 'train_search_filters';
 
 function SearchPage() {
   const navigate = useNavigate();
@@ -112,16 +125,40 @@ function SearchPage() {
   const [filteredTrains, setFilteredTrains] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const [filters, setFilters] = useState({
-    priceRange: 'all',
-    wagonType: 'all',
-    departureTime: 'any',
-    hasWifi: false,
-    hasConditioner: false,
-    hasLinens: false
+  // Загружаем фильтры из localStorage при инициализации
+  const [filters, setFilters] = useState(() => {
+    const defaultFilters = {
+      priceRange: 'all',
+      wagonType: 'all',
+      departureTime: 'any',
+      hasWifi: false,
+      hasConditioner: false,
+      hasLinens: false
+    };
+    
+    try {
+      const saved = localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...defaultFilters, ...parsed };
+      }
+    } catch (e) {
+      // Игнорируем ошибки парсинга
+    }
+    
+    return defaultFilters;
   });
   
   const [sortBy, setSortBy] = useState('departureTime');
+
+  // Сохраняем фильтры в localStorage при каждом изменении
+  useEffect(() => {
+    try {
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+    } catch (e) {
+      // Игнорируем ошибки сохранения
+    }
+  }, [filters]);
 
   const getTrainMinPrice = useCallback((train, wagonFilter) => {
     if (!train?.wagons?.length) return Infinity;
@@ -134,80 +171,27 @@ function SearchPage() {
     return matchingWagons.length > 0 ? Math.min(...matchingWagons.map(w => w.price)) : Infinity;
   }, []);
 
+  // Загрузка поездов при изменении searchParams
   useEffect(() => {
-    const fetchTrains = async () => {
-      if (!searchParams?.from || !searchParams?.to) {
-        setTrains([]);
-        setFilteredTrains([]);
-        setLoading(false);
-        return;
-      }
+    if (!searchParams?.from || !searchParams?.to) {
+      setTrains([]);
+      setFilteredTrains([]);
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
+    setLoading(true);
 
-      try {
-        const params = {
-          from_city_id: searchParams.from,
-          to_city_id: searchParams.to,
-          date_start: '2024-05-20',
-          date_end: '2024-05-20',
-        };
-
-        if (filters.wagonType !== 'all') {
-          const wagon = wagonTypes.find(t => t.id === filters.wagonType);
-          if (wagon) {
-            if (wagon.apiTypes.includes('first')) params.have_first_class = true;
-            if (wagon.apiTypes.includes('second')) params.have_second_class = true;
-            if (wagon.apiTypes.includes('third')) params.have_third_class = true;
-            if (wagon.apiTypes.includes('fourth')) params.have_fourth_class = true;
-          }
-        }
-
-        if (filters.priceRange !== 'all') {
-          const range = priceRanges.find(r => r.id === filters.priceRange);
-          if (range) {
-            if (range.min > 0) params.price_from = range.min;
-            if (range.max < Infinity) params.price_to = range.max;
-          }
-        }
-
-        if (filters.departureTime !== 'any') {
-          switch (filters.departureTime) {
-            case 'morning': params.start_departure_hour_from = 5; params.start_departure_hour_to = 12; break;
-            case 'day': params.start_departure_hour_from = 12; params.start_departure_hour_to = 18; break;
-            case 'evening': params.start_departure_hour_from = 18; params.start_departure_hour_to = 23; break;
-            case 'night': params.start_departure_hour_from = 23; params.start_departure_hour_to = 5; break;
-          }
-        }
-
-        if (filters.hasWifi) params.have_wifi = true;
-        if (filters.hasConditioner) params.have_air_conditioning = true;
-
-        const response = await trainApi.searchRoutes(params);
-        
-        if (response?.items?.length > 0) {
-          const apiTrains = response.items
-            .map((item, index) => trainApi.formatRouteForUI(item, index))
-            .filter(train => train !== null);
-          
-          if (apiTrains.length > 0) {
-            setTrains(apiTrains);
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (error) {
-        console.log('API недоступен, используем демо-данные');
-      }
-
+    const timer = setTimeout(() => {
       const mockTrains = generateMockTrains(searchParams.from, searchParams.to);
       setTrains(mockTrains);
       setLoading(false);
-    };
+    }, 500);
 
-    fetchTrains();
-  }, [searchParams, filters]);
+    return () => clearTimeout(timer);
+  }, [searchParams]);
 
+  // Фильтрация и сортировка при изменении фильтров или поездов
   useEffect(() => {
     if (!trains.length) {
       setFilteredTrains([]);
@@ -216,54 +200,63 @@ function SearchPage() {
 
     let filtered = [...trains];
 
-    if (trains[0]?.id?.startsWith('mock-')) {
-      if (filters.wagonType !== 'all') {
-        const selectedWagon = wagonTypes.find(t => t.id === filters.wagonType);
-        if (selectedWagon?.apiTypes) {
-          filtered = filtered.filter(train => 
-            train.wagons.some(wagon => selectedWagon.apiTypes.includes(wagon.apiType))
-          );
-        }
+    // Фильтр по типу вагона
+    if (filters.wagonType !== 'all') {
+      const selectedWagon = wagonTypes.find(t => t.id === filters.wagonType);
+      if (selectedWagon?.apiTypes) {
+        filtered = filtered.filter(train => 
+          train.wagons.some(wagon => selectedWagon.apiTypes.includes(wagon.apiType))
+        );
       }
-
-      if (filters.priceRange !== 'all') {
-        const priceRange = priceRanges.find(r => r.id === filters.priceRange);
-        if (priceRange) {
-          filtered = filtered.filter(train => {
-            const minPrice = getTrainMinPrice(train, filters.wagonType);
-            return isFinite(minPrice) && minPrice >= priceRange.min && minPrice <= priceRange.max;
-          });
-        }
-      }
-
-      if (filters.departureTime !== 'any') {
-        filtered = filtered.filter(train => {
-          try {
-            const date = new Date(train.departureTime);
-            if (isNaN(date.getTime())) return false;
-            const hour = date.getHours();
-            switch (filters.departureTime) {
-              case 'morning': return hour >= 5 && hour < 12;
-              case 'day': return hour >= 12 && hour < 18;
-              case 'evening': return hour >= 18 && hour < 23;
-              case 'night': return hour >= 23 || hour < 5;
-              default: return true;
-            }
-          } catch { return false; }
-        });
-      }
-
-      if (filters.hasWifi) filtered = filtered.filter(train => train.hasWifi);
-      if (filters.hasConditioner) filtered = filtered.filter(train => train.hasConditioner);
-      if (filters.hasLinens) filtered = filtered.filter(train => train.hasLinens);
     }
 
+    // Фильтр по цене
+    if (filters.priceRange !== 'all') {
+      const priceRange = priceRanges.find(r => r.id === filters.priceRange);
+      if (priceRange) {
+        filtered = filtered.filter(train => {
+          const minPrice = getTrainMinPrice(train, filters.wagonType);
+          return isFinite(minPrice) && minPrice >= priceRange.min && minPrice <= priceRange.max;
+        });
+      }
+    }
+
+    // Фильтр по времени
+    if (filters.departureTime !== 'any') {
+      filtered = filtered.filter(train => {
+        try {
+          const date = new Date(train.departureTime);
+          if (isNaN(date.getTime())) return false;
+          const hour = date.getHours();
+          switch (filters.departureTime) {
+            case 'morning': return hour >= 5 && hour < 12;
+            case 'day': return hour >= 12 && hour < 18;
+            case 'evening': return hour >= 18 && hour < 23;
+            case 'night': return hour >= 23 || hour < 5;
+            default: return true;
+          }
+        } catch { return false; }
+      });
+    }
+
+    // Фильтры по услугам
+    if (filters.hasWifi) filtered = filtered.filter(train => train.hasWifi);
+    if (filters.hasConditioner) filtered = filtered.filter(train => train.hasConditioner);
+    if (filters.hasLinens) filtered = filtered.filter(train => train.hasLinens);
+
+    // Сортировка
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'price-asc': return getTrainMinPrice(a, filters.wagonType) - getTrainMinPrice(b, filters.wagonType);
         case 'price-desc': return getTrainMinPrice(b, filters.wagonType) - getTrainMinPrice(a, filters.wagonType);
         case 'duration': return (a.duration || 0) - (b.duration || 0);
-        default: return new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime();
+        case 'departureTime':
+        default: {
+          const timeA = new Date(a.departureTime).getTime();
+          const timeB = new Date(b.departureTime).getTime();
+          if (isNaN(timeA) || isNaN(timeB)) return 0;
+          return timeA - timeB;
+        }
       }
     });
 
@@ -271,7 +264,10 @@ function SearchPage() {
   }, [trains, filters, sortBy, getTrainMinPrice]);
 
   const handleFilterChange = (filterName, value) => {
-    setFilters(prev => ({ ...prev, [filterName]: value }));
+    setFilters(prev => {
+      const newFilters = { ...prev, [filterName]: value };
+      return newFilters;
+    });
   };
 
   const handleSortChange = (e) => {
@@ -279,15 +275,17 @@ function SearchPage() {
   };
 
   const handleResetFilters = () => {
-    setFilters({
+    const defaultFilters = {
       priceRange: 'all',
       wagonType: 'all',
       departureTime: 'any',
       hasWifi: false,
       hasConditioner: false,
       hasLinens: false
-    });
+    };
+    setFilters(defaultFilters);
     setSortBy('departureTime');
+    localStorage.removeItem(FILTERS_STORAGE_KEY);
   };
 
   const handleTrainSelect = (train) => {
