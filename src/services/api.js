@@ -107,10 +107,22 @@ const api = axios.create({
   }
 });
 
-// Тихой перехватчик без console.error
+// === ДОБАВЛЕНО: логирование запросов ===
+api.interceptors.request.use(request => {
+  console.log('🚀 [REQUEST]', request.method?.toUpperCase(), request.baseURL + request.url, request.params || '');
+  return request;
+});
+
+// === ДОБАВЛЕНО: логирование ответов и ошибок ===
 api.interceptors.response.use(
-  (response) => response,
-  (error) => Promise.reject(error)
+  (response) => {
+    console.log('✅ [RESPONSE]', response.config.url, response.status, response.data);
+    return response;
+  },
+  (error) => {
+    console.log('❌ [ERROR]', error.config?.url, error.message, error.response?.data || '');
+    return Promise.reject(error);
+  }
 );
 
 const trainApi = {
