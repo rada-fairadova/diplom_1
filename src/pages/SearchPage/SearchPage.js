@@ -92,6 +92,7 @@ function SearchPage() {
     return matchingWagons.length > 0 ? Math.min(...matchingWagons.map(w => w.price)) : Infinity;
   }, []);
 
+  // === ИЗМЕНЕНО: добавлено подробное логирование ===
   useEffect(() => {
     if (!searchParams?.from || !searchParams?.to) {
       setTrains([]);
@@ -101,6 +102,7 @@ function SearchPage() {
     }
 
     setLoading(true);
+    console.log('🔍 [SEARCH] Начинаем поиск:', { from: searchParams.from, to: searchParams.to });
 
     // Загружаем города для получения ID
     Promise.all([
@@ -111,25 +113,38 @@ function SearchPage() {
       const toCity = toCities[0];
       
       if (!fromCity || !toCity) {
+        console.warn('⚠️ [CITIES] Города не найдены');
         setTrains([]);
         setLoading(false);
         return;
       }
 
-      // Реальный запрос к API
-      return trainApi.searchRoutes({
+      console.log('🏙️ [CITIES] Найдены:', { from: fromCity.name, to: toCity.name });
+
+      // === ИЗМЕНЕНО: добавлены дополнительные параметры в запрос ===
+      const requestParams = {
         from_city_id: fromCity._id,
-        to_city_id: toCity._id
-      }).then(response => {
+        to_city_id: toCity._id,
+        ...(searchParams.date_start && { date_start: searchParams.date_start }),
+        ...(searchParams.date_end && { date_end: searchParams.date_end }),
+      };
+
+      console.log('📤 [REQUEST] Параметры запроса:', requestParams);
+
+      // Реальный запрос к API
+      return trainApi.searchRoutes(requestParams).then(response => {
+        console.log('📥 [RESPONSE] Получено маршрутов:', response.items?.length || 0);
         const apiRoutes = response.items || [];
         const formattedTrains = apiRoutes
           .map((route, index) => trainApi.formatRouteForUI(route, index))
           .filter(Boolean);
         
+        console.log('🚂 [FORMATTED] Отформатировано поездов:', formattedTrains.length);
         setTrains(formattedTrains);
         setLoading(false);
       });
-    }).catch(() => {
+    }).catch((error) => {
+      console.error('❌ [FATAL] Ошибка загрузки:', error);
       setTrains([]);
       setLoading(false);
     });

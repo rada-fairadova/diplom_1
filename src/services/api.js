@@ -161,13 +161,40 @@ const trainApi = {
       return mockResult;
     }
 
+    // === ИЗМЕНЕНО: формируем полные параметры для запроса ===
+    const requestParams = {
+      from_city_id: params.from_city_id,
+      to_city_id: params.to_city_id,
+    };
+
+    // Добавляем все переданные параметры к запросу
+    if (params.date_start) requestParams.date_start = params.date_start;
+    if (params.date_end) requestParams.date_end = params.date_end;
+    if (params.have_first_class !== undefined) requestParams.have_first_class = params.have_first_class;
+    if (params.have_second_class !== undefined) requestParams.have_second_class = params.have_second_class;
+    if (params.have_third_class !== undefined) requestParams.have_third_class = params.have_third_class;
+    if (params.have_fourth_class !== undefined) requestParams.have_fourth_class = params.have_fourth_class;
+    if (params.price_from !== undefined) requestParams.price_from = params.price_from;
+    if (params.price_to !== undefined) requestParams.price_to = params.price_to;
+    if (params.have_wifi !== undefined) requestParams.have_wifi = params.have_wifi;
+    if (params.have_air_conditioning !== undefined) requestParams.have_air_conditioning = params.have_air_conditioning;
+    if (params.limit !== undefined) requestParams.limit = params.limit;
+    if (params.offset !== undefined) requestParams.offset = params.offset;
+    if (params.sort !== undefined) requestParams.sort = params.sort;
+
     try {
-      const response = await api.get('/routes', { params });
+      console.log('🌐 [API CALL] Отправляем запрос маршрутов:', requestParams);
+      const response = await api.get('/routes', { params: requestParams });
+      console.log('📦 [API RESPONSE] Статус:', response.status, 'Количество:', response.data?.items?.length || 0);
+      
       if (response.data?.items?.length > 0) {
         return { items: response.data.items, total_count: response.data.total_count || response.data.items.length };
       }
+      
+      console.log('⚠️ [EMPTY] API вернул пустой результат, используем мок');
       return mockResult;
-    } catch {
+    } catch (error) {
+      console.error('❌ [API ERROR] Ошибка запроса маршрутов:', error.message);
       return mockResult;
     }
   },
