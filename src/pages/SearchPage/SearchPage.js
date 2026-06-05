@@ -92,7 +92,6 @@ function SearchPage() {
     return matchingWagons.length > 0 ? Math.min(...matchingWagons.map(w => w.price)) : Infinity;
   }, []);
 
-  // === ИЗМЕНЕНО: добавлено подробное логирование ===
   useEffect(() => {
     if (!searchParams?.from || !searchParams?.to) {
       setTrains([]);
@@ -121,7 +120,6 @@ function SearchPage() {
 
       console.log('🏙️ [CITIES] Найдены:', { from: fromCity.name, to: toCity.name });
 
-      // === ИЗМЕНЕНО: добавлены дополнительные параметры в запрос ===
       const requestParams = {
         from_city_id: fromCity._id,
         to_city_id: toCity._id,
@@ -366,7 +364,11 @@ function SearchPage() {
         };
         
         const wagonInfo = typeMap[ticketData.wagonApiType] || typeMap['second'];
-        const depDate = new Date(2024, 4, 20, 8 + Math.floor(Math.random() * 12));
+        // ИЗМЕНЕНО: Дата на 2 месяца вперед
+        const now = new Date();
+        const daysAhead = 60 + Math.floor(Math.random() * 15); // 60-75 дней вперед
+        const depDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead, 
+                                 8 + Math.floor(Math.random() * 12), Math.floor(Math.random() * 60));
         const arrDate = new Date(depDate.getTime() + (ticketData.durationMinutes || 300) * 60000);
 
         setSelectedTrain({
