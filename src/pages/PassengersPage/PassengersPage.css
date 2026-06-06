@@ -864,15 +864,16 @@
 }
 
 .passenger-form__button--cancel {
-  background: white;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   color: #666;
   border-color: #ddd;
 }
 
 .passenger-form__button--cancel:hover {
-  background: #f8f9fa;
+  background: linear-gradient(135deg, #e9ecef, #dee2e6);
   border-color: #bbb;
   color: #333;
+  transform: translateY(-2px);
 }
 
 /* Управление пассажирами */

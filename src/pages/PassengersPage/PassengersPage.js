@@ -125,7 +125,7 @@ function PassengersPage() {
           }
           
           // Проверка года рождения 
-          else if (birthYear >= 1990) {
+          else if (birthYear < 1990) {
             errors.birthDate = 'Год рождения должен быть позже 1990';
           }
           

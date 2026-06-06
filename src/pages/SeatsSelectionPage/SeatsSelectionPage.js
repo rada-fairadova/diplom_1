@@ -72,10 +72,30 @@ function SeatsSelectionPage() {
     return prices[type] || 0;
   }, []);
 
-  // Функция для генерации занятых мест
-  const generateOccupiedSeats = useCallback((totalSeats, availableSeats) => {
-    const occupiedCount = Math.max(0, totalSeats - availableSeats);
+  // Функция для генерации занятых мест на основе данных из API
+  const generateOccupiedSeats = useCallback((totalSeats, availableSeats, apiSeats = null) => {
     const occupiedSeats = [];
+    
+    // Если есть данные из API, используем их
+    if (apiSeats && Array.isArray(apiSeats) && apiSeats.length > 0) {
+      apiSeats.forEach(seat => {
+        if (!seat.available && seat.index !== undefined) {
+          // API может возвращать index начиная с 0
+          const seatNumber = seat.index + 1;
+          if (!occupiedSeats.includes(seatNumber) && seatNumber <= totalSeats) {
+            occupiedSeats.push(seatNumber);
+          }
+        }
+      });
+      
+      if (occupiedSeats.length > 0) {
+        console.log('Занятые места из API:', occupiedSeats);
+        return occupiedSeats;
+      }
+    }
+    
+    // Если API не вернул данные, генерируем на основе доступного количества
+    const occupiedCount = Math.max(0, totalSeats - availableSeats);
     
     for (let i = 0; i < occupiedCount; i++) {
       let seat;
@@ -88,8 +108,29 @@ function SeatsSelectionPage() {
     return occupiedSeats;
   }, []);
 
+  // Функция для загрузки данных о местах через API
+  const fetchSeatsFromApi = useCallback(async (routeId, wagonApiType) => {
+    try {
+      const seatsData = await trainApi.getRouteSeats(routeId, { 
+        have_first_class: wagonApiType === 'first',
+        have_second_class: wagonApiType === 'second',
+        have_third_class: wagonApiType === 'third',
+        have_fourth_class: wagonApiType === 'fourth'
+      });
+      
+      if (seatsData && Array.isArray(seatsData) && seatsData.length > 0) {
+        console.log('Получены данные о местах из API:', seatsData.length, 'записей');
+        return seatsData;
+      }
+      return null;
+    } catch (error) {
+      console.log('API не вернул данные о местах, используем расчет:', error.message);
+      return null;
+    }
+  }, []);
+
   // Обработчик выбора вагона
-  const handleWagonSelect = useCallback((wagon) => {
+  const handleWagonSelect = useCallback(async (wagon) => {
     console.log('Выбран вагон:', wagon);
     setSelectedWagonLocal(wagon);
     setSelectedSeatsLocal([]);
@@ -141,12 +182,20 @@ function SeatsSelectionPage() {
         console.log('Загружаем места для поезда:', trainData);
 
         if (trainData.wagons && trainData.wagons.length > 0) {
-          const wagons = trainData.wagons.map((wagon, index) => {
+          // Загружаем данные для каждого типа вагона параллельно
+          const wagonsPromises = trainData.wagons.map(async (wagon, index) => {
             const wagonTypeConfig = wagonTypesConfig.find(w => 
               w.type === (wagon.type || wagon.apiType)
             ) || wagonTypesConfig.find(w => 
               w.type === (wagon.apiType || wagon.type)
             ) || wagonTypesConfig[1];
+
+            // Пытаемся получить данные о местах из API
+            const routeId = trainData.id || selectedTrain.id;
+            let apiSeats = null;
+            if (routeId) {
+              apiSeats = await fetchSeatsFromApi(routeId, wagon.apiType || wagon.type);
+            }
 
             return {
               ...wagonTypeConfig,
@@ -155,14 +204,18 @@ function SeatsSelectionPage() {
               type: wagon.type || wagon.apiType,
               name: wagon.name || wagonTypeConfig.name,
               totalSeats: wagon.totalSeats || wagonTypeConfig.totalSeats,
-              availableSeats: wagon.availableSeats || 0,
+              availableSeats: apiSeats 
+                ? apiSeats.filter(s => s.available).length 
+                : (wagon.availableSeats || 0),
               price: wagon.price || 0,
               features: wagonTypeConfig.features,
               icon: wagonTypeConfig.icon,
-              seatsPerRow: wagonTypeConfig.seatsPerRow
+              seatsPerRow: wagonTypeConfig.seatsPerRow,
+              apiSeats: apiSeats // Сохраняем для использования при генерации карты мест
             };
           });
 
+          const wagons = await Promise.all(wagonsPromises);
           console.log('Сформированные вагоны:', wagons);
           setAvailableWagons(wagons);
         } else {
@@ -180,7 +233,7 @@ function SeatsSelectionPage() {
     };
 
     fetchSeatsData();
-  }, [selectedTrain, navigate, getDefaultPrice]);
+  }, [selectedTrain, navigate, getDefaultPrice, fetchSeatsFromApi]);
 
   // Выбор первого вагона по умолчанию
   useEffect(() => {
@@ -195,7 +248,11 @@ function SeatsSelectionPage() {
 
     const generateSeatMap = () => {
       const seats = [];
-      const occupiedSeats = generateOccupiedSeats(selectedWagon.totalSeats, selectedWagon.availableSeats);
+      const occupiedSeats = generateOccupiedSeats(
+        selectedWagon.totalSeats, 
+        selectedWagon.availableSeats,
+        selectedWagon.apiSeats
+      );
       
       for (let i = 1; i <= selectedWagon.totalSeats; i++) {
         seats.push({

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTicket } from '../../context/TicketContext';
 import { trainApi } from '../../services/api';
 import OrderSteps from '../../components/OrderSteps/OrderSteps';
@@ -44,13 +44,15 @@ const FILTERS_STORAGE_KEY = 'train_search_filters';
 
 function SearchPage() {
   const navigate = useNavigate();
-  const { searchParams, setSelectedTrain } = useTicket();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { searchParams: ticketSearchParams, setSelectedTrain } = useTicket();
 
   const [trains, setTrains] = useState([]);
   const [filteredTrains, setFilteredTrains] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  const [filters, setFilters] = useState(() => {
+
+  // Получаем фильтры из URL или используем значения по умолчанию
+  const getFiltersFromUrl = useCallback(() => {
     const defaultFilters = {
       priceRange: 'all',
       wagonType: 'all',
@@ -59,7 +61,29 @@ function SearchPage() {
       hasConditioner: false,
       hasLinens: false
     };
-    
+
+    const urlFilters = {};
+    let hasUrlFilters = false;
+
+    for (const key in defaultFilters) {
+      const value = searchParams.get(key);
+      if (value !== null) {
+        hasUrlFilters = true;
+        // Для булевых значений
+        if (typeof defaultFilters[key] === 'boolean') {
+          urlFilters[key] = value === 'true';
+        } else {
+          urlFilters[key] = value;
+        }
+      }
+    }
+
+    // Если есть фильтры в URL, используем их
+    if (hasUrlFilters) {
+      return { ...defaultFilters, ...urlFilters };
+    }
+
+    // Если в URL нет фильтров, пробуем localStorage
     try {
       const saved = localStorage.getItem(FILTERS_STORAGE_KEY);
       if (saved) {
@@ -69,17 +93,41 @@ function SearchPage() {
     } catch (e) {
       // Игнорируем ошибки парсинга
     }
-    
-    return defaultFilters;
-  });
 
+    return defaultFilters;
+  }, [searchParams]);
+
+  const [filters, setFilters] = useState(getFiltersFromUrl);
+
+  // Синхронизация фильтров с URL и localStorage
   useEffect(() => {
+    const params = new URLSearchParams();
+    
+    // Добавляем только нестандартные значения фильтров в URL
+    if (filters.priceRange !== 'all') params.set('priceRange', filters.priceRange);
+    if (filters.wagonType !== 'all') params.set('wagonType', filters.wagonType);
+    if (filters.departureTime !== 'any') params.set('departureTime', filters.departureTime);
+    if (filters.hasWifi) params.set('hasWifi', 'true');
+    if (filters.hasConditioner) params.set('hasConditioner', 'true');
+    if (filters.hasLinens) params.set('hasLinens', 'true');
+
+    // Сохраняем текущие параметры URL, которые не относятся к фильтрам
+    const filterKeys = ['priceRange', 'wagonType', 'departureTime', 'hasWifi', 'hasConditioner', 'hasLinens'];
+    for (const [key, value] of searchParams.entries()) {
+      if (!filterKeys.includes(key)) {
+        params.set(key, value);
+      }
+    }
+
+    setSearchParams(params, { replace: true });
+
+    // Сохраняем в localStorage для быстрого восстановления в текущем браузере
     try {
       localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
     } catch (e) {
       // Игнорируем ошибки сохранения
     }
-  }, [filters]);
+  }, [filters, setSearchParams, searchParams]);
 
   const getTrainMinPrice = useCallback((train, wagonFilter) => {
     if (!train?.wagons?.length) return Infinity;
@@ -93,7 +141,7 @@ function SearchPage() {
   }, []);
 
   useEffect(() => {
-    if (!searchParams?.from || !searchParams?.to) {
+    if (!ticketSearchParams?.from || !ticketSearchParams?.to) {
       setTrains([]);
       setFilteredTrains([]);
       setLoading(false);
@@ -101,12 +149,12 @@ function SearchPage() {
     }
 
     setLoading(true);
-    console.log('🔍 [SEARCH] Начинаем поиск:', { from: searchParams.from, to: searchParams.to });
+    console.log('🔍 [SEARCH] Начинаем поиск:', { from: ticketSearchParams.from, to: ticketSearchParams.to });
 
     // Загружаем города для получения ID
     Promise.all([
-      trainApi.searchCities(searchParams.from),
-      trainApi.searchCities(searchParams.to)
+      trainApi.searchCities(ticketSearchParams.from),
+      trainApi.searchCities(ticketSearchParams.to)
     ]).then(([fromCities, toCities]) => {
       const fromCity = fromCities[0];
       const toCity = toCities[0];
@@ -123,8 +171,8 @@ function SearchPage() {
       const requestParams = {
         from_city_id: fromCity._id,
         to_city_id: toCity._id,
-        ...(searchParams.date_start && { date_start: searchParams.date_start }),
-        ...(searchParams.date_end && { date_end: searchParams.date_end }),
+        ...(ticketSearchParams.date_start && { date_start: ticketSearchParams.date_start }),
+        ...(ticketSearchParams.date_end && { date_end: ticketSearchParams.date_end }),
       };
 
       console.log('📤 [REQUEST] Параметры запроса:', requestParams);
@@ -146,7 +194,7 @@ function SearchPage() {
       setTrains([]);
       setLoading(false);
     });
-  }, [searchParams]);
+  }, [ticketSearchParams]);
 
   useEffect(() => {
     if (!trains.length) {
@@ -364,7 +412,7 @@ function SearchPage() {
         };
         
         const wagonInfo = typeMap[ticketData.wagonApiType] || typeMap['second'];
-        // ИЗМЕНЕНО: Дата на 2 месяца вперед
+        // Дата на 2 месяца вперед
         const now = new Date();
         const daysAhead = 60 + Math.floor(Math.random() * 15); // 60-75 дней вперед
         const depDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead, 
